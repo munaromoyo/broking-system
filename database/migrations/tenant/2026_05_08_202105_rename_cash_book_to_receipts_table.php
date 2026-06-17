@@ -1,0 +1,19 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::rename('cash_book', 'receipts');
+    }
+
+    public function down(): void
+    {
+        Schema::rename('receipts', 'cash_book');
+    }
+};
+

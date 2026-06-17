@@ -1,0 +1,299 @@
+@media screen and (min-width: 100px) {
+	/*PROGRAM DISPLY*/
+	#gallery li {
+		width: 100%;
+
+	}
+
+	/*#gallery li:nth-child(9n) {
+		clear: left;
+	}*/
+
+	#gallery li a p {
+		font-size: 1.2em;
+		
+	}
+
+
+}
+
+
+@media screen and (min-width: 270px) {
+	/*PROGRAM DISPLAY*/
+	#gallery li {
+		float: left;
+		width: 45%;
+		margin: 2.5%;
+
+	}
+
+	/*#gallery li:nth-child(9n) {
+		clear: left;
+	}*/
+
+	#gallery li a p {
+		font-size: 1.2em;
+		
+	}
+}
+
+
+@media screen and (min-width: 480px) {
+
+
+/***************************
+ PAGE: GENERAL 
+ **************************/
+
+ h3 {
+ 	font-size: 1.25em;
+ 	font-weight: bold;   
+ }
+
+
+ h4 {
+ 	font-size: 1.25em;   
+ }
+
+h5 {
+ 	font-size: 1em;   
+ }
+
+
+ /***************************
+ LOGO
+ **************************/
+ #profstand {
+	width: 30%;	
+}
+
+
+/***************************
+ REGISTRATION FORM
+ **************************/
+
+#signup_form {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+   margin: 7px;
+}
+
+.form_group {
+  display: flex;
+  flex-direction: row;
+  padding: 0 25px;
+ 
+}
+.col_1 {
+  flex: 2;
+  margin: 7px;
+  } 
+
+.lab_value {
+flex: 3;
+}
+
+
+
+/***************************
+ PAGE: HOME 
+ **************************/
+ /*#section_1 {
+	float: left;
+	margin-right: 18%;
+	width: 50%;
+	
+}*/
+
+/***************************
+ PAGE: E-TRAINING ACCOUNT
+ **************************/
+
+.my_personal_info {
+	float: left;
+	width: 30%;
+	margin-right: 2%;
+}
+
+.my_programs {
+	float: right;
+	width: 66%;
+	margin-left: 2%;
+}
+
+.my_button {
+	clear: both;
+}
+
+
+
+/***************************
+ PAGE: PROGRAMS DISPLAY LIST 
+ **************************/
+/* 4 * 5 = 20
+
+100-20 = 80%
+85%/4 = 20
+*/
+
+#gallery li {
+		float: left;
+		width: 29%;
+		margin: 1%;
+
+	}
+
+/*PROGRAMS DISPLAY*/
+/*#gallery li {
+	width: 20%;
+
+}
+
+#gallery li:nth-child(9n) {
+	clear: left;
+}
+
+#gallery li a p {
+	font-size: 0.7em;
+	
+}*/
+
+
+
+/*DIV*/
+#div1 {
+	margin-bottom: 20%;
+}
+
+/***************************
+ PAGE: ENROLLMENT
+ **************************/
+
+.personal_info_container {
+	float: left;
+	width: 50%;
+}
+
+.next_of_kin_container {
+	float: right;
+	width: 50%;
+}
+
+
+
+/*.reg_form_field {
+	margin-left: -25%;
+}*/
+
+.col-md-7 {
+    -ms-flex: 0 0 58.333333%;
+    flex: 0 0 58.333333%;
+    max-width: 58.333333%;
+  }
+
+}
+
+
+@media screen and (min-width: 660px) {
+
+
+/***************************
+ PAGE: HEADER 
+ **************************/
+nav {
+	background: none;
+	float: left;
+	font-size: 1.125em;
+	margin-left: 6%;
+	margin-right: 
+	text-align: left;
+	width: 45%;
+}
+
+
+nav a, nav a:visited {
+	color: #20b880;
+}
+
+nav a.selected, nav a:hover {
+	color: #111;
+}
+
+h1 {
+	
+	float: right;
+	margin-right: 50px;
+	text-align: right;
+	width: 45%;
+	
+}
+
+h2 {
+	float: left;
+	margin-left: 3.3%;
+	margin-top: 10px;
+	text-align: left;
+	width: 45%;
+} 
+
+
+/***************************
+ LOGO
+ **************************/
+ #profstand {
+	width: 35%;	
+	transition: 1s ease-in-out;
+}
+
+#header1:hover #profstand {
+	-webkit-transform: scale(1.5);
+}
+
+
+
+/*DIV*/
+#div1 {
+	margin-bottom: 30%;
+}
+
+
+/*SIGN UP FORM*/
+
+.reg_form_field {
+	width: 40%;
+
+}
+
+
+
+.my_reg {
+	/*padding: 10px;*/
+	width: 100%;
+}
+
+.extra {
+text-align: center;
+}
+
+#reg_submit {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	width: 100%;
+	padding: 10px;
+	margin-top: 10px;
+}
+
+/*.form_content_wrap {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	position: relative;
+
+	}*/
+
+
+}
+
+
