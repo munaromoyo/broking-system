@@ -55,15 +55,36 @@ public function index()
         ]);
 
         // 5. Redirect with a success message (Session Flash)
-        return redirect()->route('clients.index')
+        return redirect()->route('clients.list')
                          ->with('status', 'Client updated successfully!');
     }
 
+// EDIT CLIENT
+//     public function edit()
+// {
+//     $clients = Client::all(); // Fetches all from 'client_register'
+//     return view('clients.edit', compact('clients'));
+// }
 
-    public function edit()
+// public function edit($id)
+// {
+//     // 1. Find the client by ID (or throw a 404 if not found)
+//     $client = Client::findOrFail($id);
+
+//     // 2. Pass the $client variable to your edit blade view
+//     return view('clients.edit', compact('client'));
+// }
+
+public function edit($id)
 {
-    $clients = Client::all(); // Fetches all from 'client_register'
-    return view('clients.edit', compact('clients'));
+    // 1. Get the current active client for the form inputs
+    $client = Client::findOrFail($id);
+
+    // 2. Fetch all clients to populate the dropdown switcher
+    $allClients = Client::all();
+
+    // 3. Pass BOTH variables to your view
+    return view('clients.edit', compact('client', 'allClients'));
 }
 
 
@@ -96,6 +117,44 @@ public function store(Request $request)
 
         return redirect()->back()->with('success', 'Client successfully registered');
     }
+
+    // DELETE CLIENT
+    public function destroy($id)
+    {
+        $client = Client::findOrFail($id);
+        $client->delete();
+
+        return redirect()->back()->with('status', 'Client successfully deleted from the registry.');
+    }
+
+    // 1. Display the Trash Bin View
+public function trash()
+{
+    // Fetches ONLY soft-deleted clients
+    $deletedClients = Client::onlyTrashed()->get();
+    
+    return view('clients.trash', compact('deletedClients'));
+}
+
+// 2. Restore a Soft-Deleted Client
+public function restore($id)
+{
+    $client = Client::onlyTrashed()->findOrFail($id);
+    $client->restore(); // Removes the deleted_at timestamp
+
+    return redirect()->route('clients.list')
+        ->with('status', "Client '{$client->client_name}' has been successfully restored.");
+}
+
+// 3. Permanently Delete a Client
+public function forceDelete($id)
+{
+    $client = Client::onlyTrashed()->findOrFail($id);
+    $client->forceDelete(); // Wipes the row completely from the database
+
+    return redirect()->back()
+        ->with('status', 'Client profile has been permanently deleted.');
+}
 
 
 }

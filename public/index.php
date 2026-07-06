@@ -1,5 +1,11 @@
 <?php
-
+set_exception_handler(function($e) {
+    echo '<pre style="background:#1a1a1a;color:#ff6b6b;padding:20px;font-size:13px;">';
+    echo "<b>" . get_class($e) . "</b>: " . $e->getMessage() . "\n\n";
+    echo $e->getTraceAsString();
+    echo '</pre>';
+    exit;
+});
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 

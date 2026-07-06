@@ -24,20 +24,21 @@
                             <i class="bi bi-file-earmark-text me-1"></i> Placing Slips
                         </h6>
                         <span class="badge rounded-pill bg-light text-primary border" id="resultCount">
-                            {{ $placements->count() }} Total Active Records
+                            {{ $placements->count() }} Total Records
                         </span>
                     </div>
                     <div class="input-group input-group-sm">
                         <span class="input-group-text bg-light border-0"><i class="bi bi-search text-muted small"></i></span>
                         {{-- input ID matches live search JS targets below --}}
-                        <input type="text" id="slipSearchInput" class="form-control bg-light border-0" placeholder="Type to search...">
+                        <input type="text" id="slipSearchInput" class="form-control bg-light border-0" placeholder="Type to search by insured, insurer, or status...">
                     </div>
                 </div>
 
                 <div class="list-group list-group-flush border-top" id="slipList">
                     @forelse($placements as $placement)
                         @php 
-                            $searchString = strtolower($placement->insured . ' ' . $placement->insurer . ' SLPN-' . $placement->id); 
+                            // Added status string to search indices matching live javascript filters
+                            $searchString = strtolower($placement->insured . ' ' . $placement->insurer . ' ' . $placement->status . ' SLPN-' . $placement->id); 
                         @endphp
                         {{-- policy-link-item maps directly to live search query --}}
                         <a href="{{ route('insurance_broking.placement_slips.show', $placement->id) }}" 
@@ -45,7 +46,7 @@
                            data-search="{{ $searchString }}">
                            
                             <div class="row align-items-center">
-                                <div class="col-md-5">
+                                <div class="col-md-4">
                                     <div class="fw-bold text-dark text-truncate mb-0" style="font-size: 0.9rem;">
                                         {{ $placement->insured }}
                                     </div>
@@ -53,12 +54,22 @@
                                         <span class="text-primary fw-medium">{{ $placement->insurer }}</span> | SLPN-{{ $placement->id }}
                                     </div>
                                 </div>
-                                <div class="col-md-4 text-center border-start py-1">
+                                
+                                {{-- Status Column --}}
+                                <div class="col-md-3 text-center border-start py-1">
+                                    <small class="text-muted d-block font-xxs text-uppercase tracking-wider">Status</small>
+                                    <span class="badge {{ $placement->status === 'Active' ? 'bg-success' : 'bg-info text-dark' }} font-xxs tracking-wider px-2 py-1 uppercase">
+                                        {{ $placement->status }}
+                                    </span>
+                                </div>
+
+                                <div class="col-md-2 text-center border-start py-1">
                                     <small class="text-muted d-block font-xxs text-uppercase tracking-wider">Expiry Date</small>
                                     <span class="small fw-semibold text-nowrap text-danger">
                                         {{ \Carbon\Carbon::parse($placement->policy_expiry_date)->format('d M y') }}
                                     </span>
                                 </div>
+                                
                                 <div class="col-md-3 text-end border-start py-1">
                                     <small class="text-muted d-block font-xxs text-uppercase tracking-wider">Gross Premium</small>
                                     <span class="fw-bold text-success">
@@ -110,7 +121,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             // Update data matches total badge count dynamically
             if (badgeEl) {
-                badgeEl.textContent = `${totalMatchCount} Active Records Match`;
+                badgeEl.textContent = `${totalMatchCount} Records Match`;
             }
 
             // Manage empty search context layout warning triggers

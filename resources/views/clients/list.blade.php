@@ -10,8 +10,12 @@
             <p class="text-muted mb-0">Manage, monitor, and update your registered client database.</p>
         </div>
         <div>
+            {{-- 1. Add the Trash Bin button here --}}
+            <a href="{{ route('clients.trash') }}" class="btn btn-outline-danger px-3 fw-bold shadow-sm d-inline-flex align-items-center gap-2 me-2" style="border-radius: 8px;">
+                <i class="bi bi-trash3"></i> Trash Bin
+            </a>
             {{-- Assuming you have a route to create a new client --}}
-            <a href="{{ route('insurance.register', ['action' => 'register_client']) }}" class="btn btn-primary px-4 fw-bold shadow-sm d-inline-flex align-items-center gap-2" style="border-radius: 8px;">
+            <a href="{{ route('insurance_broking.register', ['action' => 'register_client']) }}" class="btn btn-primary px-4 fw-bold shadow-sm d-inline-flex align-items-center gap-2" style="border-radius: 8px;">
                 <i class="bi bi-plus-lg"></i> Register New Client
             </a>
         </div>
@@ -102,7 +106,7 @@
                         <th class="py-3">Client Type</th>
                         <th class="py-3">Contact Information</th>
                         <th class="py-3">Nature of Business</th>
-                        <th class="pe-4 py-3 text-end" style="width: 150px;">Actions</th>
+                        <th class="pe-4 py-3 text-end" style="width: 180px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -131,10 +135,19 @@
                             </td>
                             <td class="pe-4 text-end">
                                 <div class="d-inline-flex gap-2">
-                                    {{-- Assuming your edit form lives on a specific route, or points back to the update page with a selector --}}
-                                    <a href="{{ route('clients.edit') }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" title="Edit Client">
+                                    {{-- Edit Button --}}
+                                    <a href="{{ route('clients.edit', $client->id) }}" class="btn btn-sm btn-outline-secondary d-flex align-items-center gap-1" title="Edit Client">
                                         <i class="bi bi-pencil-square"></i> Edit
                                     </a>
+
+                                    {{-- Delete Form Action --}}
+                                    <form action="{{ route('clients.destroy', $client->id) }}" method="POST" onsubmit="return confirm('Are you sure you want to delete this client? This action cannot be undone.');" class="d-inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="btn btn-sm btn-outline-danger d-flex align-items-center gap-1" title="Delete Client">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </form>
                                 </div>
                             </td>
                         </tr>

@@ -68,7 +68,7 @@
                             <h5 class="mb-0">Create New Payment Voucher</h5>
                         </div>
                         <div class="card-body p-4 p-md-5">
-                            <form id="voucherForm" method="POST" action="{{ route('insurance_broking.accounts.payment_vouchers.store') }}" class="row g-4">
+                            <form id="voucherForm" method="POST" action="{{ route('insurance_broking.accounts.payment_vouchers.store') }}" enctype="multipart/form-data" class="row g-4">
                                 @csrf
                                 <div class="col-md-6">
                                     <label for="payee_name" class="form-label fw-bold">Payee / Client Name*</label>
@@ -126,6 +126,13 @@
                                         <option value="Cash">Cash</option>
                                     </select>
                                 </div>
+
+                                {{-- Modified Field: Array input and multiple attribute allowed --}}
+                                <div class="col-md-12">
+                                    <label for="supporting_documents" class="form-label fw-bold">Supporting Documents</label>
+                                    <input type="file" class="form-control" name="supporting_documents[]" id="supporting_documents" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple>
+                                    <div class="form-text">You can select multiple files at once. Accepted Formats: PDF, Word, Images (Max: 5MB per file)</div>
+                                </div>
                 
                                 <div class="col-12">
                                     <label for="description" class="form-label fw-bold">Description / Particulars*</label>
@@ -168,7 +175,49 @@
                                             <td class="text-muted small">{{ \Carbon\Carbon::parse($row->created_at)->format('d M, Y') }}</td>
                                             <td><span class="badge rounded-pill bg-warning text-dark">Awaiting Approval</span></td>
                                             <td class="text-center">
-                                                <span class="text-muted small"><em>Under Review</em></span>
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" 
+                                                            class="btn btn-sm btn-outline-warning shadow-sm edit-voucher-btn" 
+                                                            data-bs-toggle="modal" 
+                                                            data-bs-target="#editVoucherModal"
+                                                            data-id="{{ $row->id }}"
+                                                            data-name="{{ ucwords(strtolower(trim($row->client_name))) }}"
+                                                            data-category="{{ $row->expense_category }}" 
+                                                            data-amount="{{ $row->amount }}"
+                                                            data-currency="{{ $row->currency }}"
+                                                            data-method="{{ $row->payment_method }}"
+                                                            data-description="{{ $row->description }}"
+                                                            {{-- Passes database column value directly (expects a JSON string or comma-separated string) --}}
+                                                            data-documents="{{ is_array($row->supporting_documents) ? json_encode($row->supporting_documents) : $row->supporting_documents }}"
+                                                            data-date="{{ \Carbon\Carbon::parse($row->created_at)->format('Y-m-d\TH:i') }}">
+                                                        <i class="bi bi-pencil-square me-1"></i> Edit
+                                                    </button>
+                                                    
+                                                    {{-- Document View dropdown for multi-files --}}
+                                                    @if(!empty($row->supporting_documents))
+                                                        <div class="btn-group" role="group">
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <i class="bi bi-file-earmark-text me-1"></i> Docs
+                                                            </button>
+                                                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                                                @php
+                                                                    $docs = is_string($row->supporting_documents) ? json_decode($row->supporting_documents, true) ?? explode(',', $row->supporting_documents) : $row->supporting_documents;
+                                                                @endphp
+                                                                @foreach((array)$docs as $index => $doc)
+                                                                    <li>
+                                                                        <a href="{{ asset('storage/' . trim($doc)) }}" target="_blank" class="dropdown-item small py-2">
+                                                                            <i class="bi bi-file-earmark me-2 text-primary"></i>Document #{{ $index + 1 }}
+                                                                        </a>
+                                                                    </li>
+                                                                @endforeach
+                                                            </ul>
+                                                        </div>
+                                                    @else
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" disabled>
+                                                            <i class="bi bi-file-earmark-x me-1"></i> No Doc
+                                                        </button>
+                                                    @endif
+                                                </div>
                                             </td>
                                         </tr>
                                     @empty
@@ -192,7 +241,7 @@
                                     <tr>
                                         <th class="ps-3">ID</th>
                                         <th>Payee</th>
-                                        <th>Expense Category</th> {{-- Added Column Header --}}
+                                        <th>Expense Category</th>
                                         <th>Amount</th>
                                         <th>Approval Date</th>
                                         <th class="text-center">Action</th>
@@ -203,14 +252,11 @@
                                         <tr>
                                             <td class="ps-3 fw-bold text-success">#{{ $row->id }}</td>
                                             <td>{{ ucwords(strtolower($row->client_name)) }}</td>
-                                            
-                                            {{-- Added Expense Category Display Column --}}
                                             <td>
                                                 <span class="badge bg-light text-dark border shadow-sm px-2.5 py-1.5 small font-monospace">
                                                     <i class="bi bi-tag-fill me-1 text-secondary"></i>{{ $row->expense_category ?? 'Uncategorized' }}
                                                 </span>
                                             </td>
-
                                             <td class="fw-bold text-success">{{ $row->currency }} {{ number_format($row->amount, 2) }}</td>
                                             <td>
                                                 <div class="small fw-bold text-dark">{{ \Carbon\Carbon::parse($row->updated_at)->format('M d, Y') }}</div>
@@ -224,23 +270,48 @@
                                                             data-bs-target="#editVoucherModal"
                                                             data-id="{{ $row->id }}"
                                                             data-name="{{ ucwords(strtolower(trim($row->client_name))) }}"
-                                                            data-category="{{ $row->expense_category }}" {{-- Added data attribute for Modal JS mapping --}}
+                                                            data-category="{{ $row->expense_category }}" 
                                                             data-amount="{{ $row->amount }}"
                                                             data-currency="{{ $row->currency }}"
                                                             data-method="{{ $row->payment_method }}"
                                                             data-description="{{ $row->description }}"
+                                                            data-documents="{{ is_array($row->supporting_documents) ? json_encode($row->supporting_documents) : $row->supporting_documents }}"
                                                             data-date="{{ \Carbon\Carbon::parse($row->created_at)->format('Y-m-d\TH:i') }}">
                                                         <i class="bi bi-pencil-square me-1"></i> Edit
                                                     </button>
                                                     
+                                                    {{-- Document View dropdown for multi-files --}}
+                                                    @if(!empty($row->supporting_documents))
+                                                        <div class="btn-group" role="group">
+                                                            <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                                                                <i class="bi bi-file-earmark-text me-1"></i> Docs
+                                                            </button>
+                                                            <ul class="dropdown-menu dropdown-menu-end shadow border-0">
+                                                                @php
+                                                                    $docs = is_string($row->supporting_documents) ? json_decode($row->supporting_documents, true) ?? explode(',', $row->supporting_documents) : $row->supporting_documents;
+                                                                @endphp
+                                                                @foreach((array)$docs as $index => $doc)
+                                                                    <li>
+                                                                        <a href="{{ asset('storage/' . trim($doc)) }}" target="_blank" class="dropdown-item small py-2">
+                                                                            <i class="bi bi-file-earmark me-2 text-primary"></i>Document #{{ $index + 1 }}
+                                                                        </a>
+                                                                    </li>
+                                                                @endforeach
+                                                            </ul>
+                                                        </div>
+                                                    @else
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary shadow-sm" disabled>
+                                                            <i class="bi bi-file-earmark-x me-1"></i> No Doc
+                                                        </button>
+                                                    @endif
+                                                    
                                                     <a href="{{ route('insurance_broking.accounts.payment_vouchers.print', $row->id) }}" class="btn btn-sm btn-outline-primary shadow-sm">
                                                         <i class="bi bi-printer me-1"></i> Print / View
-                                                                    </a>
+                                                    </a>
                                                 </div>
                                             </td>
                                         </tr>
                                     @empty
-                                        {{-- Incremented colspan to 6 to balance out the newly added column layout --}}
                                         <tr><td colspan="6" class="text-center py-5 text-muted">No approved history found.</td></tr>
                                     @endforelse
                                 </tbody>
@@ -254,21 +325,22 @@
     </div>
 </div>
 
-{{-- MODAL FOR EDITING APPROVED VOUCHER --}}
+{{-- MODAL FOR EDITING VOUCHER --}}
 <div class="modal fade" id="editVoucherModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-warning text-dark">
-                <h5 class="modal-title" id="editVoucherModalLabel">
-                    <i class="bi bi-pencil-square me-2"></i>Edit Approved Voucher
-                </h5>
+                <h5 class="modal-title" id="editVoucherModalLabel"><i class="bi bi-pencil-square me-2"></i>Edit Voucher</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form action="{{ route('insurance_broking.accounts.payment_vouchers.update') }}" method="POST">
+            <form action="{{ route('insurance_broking.accounts.payment_vouchers.update') }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
                 <div class="modal-body">
                     <input type="hidden" name="id" id="modal_voucher_id">
+                    
+                    {{-- Tracking hidden input for deleted files arrays --}}
+                    <input type="hidden" name="deleted_documents" id="modal_deleted_documents" value="[]">
 
                     <div class="row g-3">
                         <div class="col-md-8">
@@ -330,6 +402,61 @@
                             </select>
                         </div>
 
+                        {{-- Multi-upload update setup --}}
+                        <!-- <div class="col-md-12">
+                            <label for="modal_supporting_documents" class="form-label fw-bold">Add Additional Documents</label>
+                            <input type="file" class="form-control mb-2" name="supporting_documents[]" id="modal_supporting_documents" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple>
+                            
+                            <label class="form-label d-block text-secondary small fw-bold">Current Files Attached (Click X to remove):</label>
+                            <div id="modal_docs_preview_container" class="d-flex flex-wrap gap-2 p-2 bg-light rounded border">
+                                {{-- Loaded via JS loop context --}}
+                            </div>
+                        </div> -->
+                       <div class="mb-4">
+                        <label class="form-label fw-bold mb-2">Supporting Documents</label>
+                        
+                        <input type="file" class="form-control mb-3" name="supporting_documents[]" id="modal_supporting_documents" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" multiple>
+
+                        <label class="form-label d-block text-secondary small fw-bold mb-2">Current Files Attached (Click Delete to remove):</label>
+                        
+                        <div id="modal_docs_preview_container">
+                            @if(!empty($voucher->supporting_documents))
+                                @php
+                                    $documents = is_array($voucher->supporting_documents) 
+                                        ? $voucher->supporting_documents 
+                                        : json_decode($voucher->supporting_documents, true) ?? [];
+                                @endphp
+
+                                @if(count($documents) > 0)
+                                    <div class="list-group mb-3 shadow-sm rounded">
+                                        @foreach($documents as $index => $file)
+                                            <div class="list-group-item d-flex justify-content-between align-items-center p-3 file-row" id="voucher-file-{{ $index }}">
+                                                <div class="d-flex align-items-center text-truncate me-3">
+                                                    <i class="bi bi-file-earmark-text text-primary fs-4 me-3"></i>
+                                                    <div class="text-truncate">
+                                                        <a href="{{ asset('storage/' . $file) }}" target="_blank" class="text-decoration-none fw-semibold text-dark text-truncate d-block">
+                                                            {{ basename($file) }}
+                                                        </a>
+                                                    </div>
+                                                </div>
+                                                
+                                                <button type="button" 
+                                                        class="btn btn-sm btn-outline-danger rounded-pill px-3 flex-shrink-0"
+                                                        onclick="deleteFile('{{ route('insurance_broking.accounts.payment_vouchers.delete_file', $voucher->id) }}', '{{ $file }}', 'voucher-file-{{ $index }}')">
+                                                    <i class="bi bi-trash me-1"></i> Delete
+                                                </button>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                @else
+                                    <div class="p-3 text-center text-muted bg-light rounded small border mb-3">No attachments found.</div>
+                                @endif
+                            @else
+                                <div class="p-3 text-center text-muted bg-light rounded small border mb-3">No attachments found.</div>
+                            @endif
+                        </div>
+                    </div>
+
                         <div class="col-12">
                             <label class="form-label fw-bold">Description / Particulars</label>
                             <textarea name="description" id="modal_description" class="form-control" rows="3" required></textarea>
@@ -354,34 +481,153 @@ document.addEventListener('DOMContentLoaded', function () {
         editModal.addEventListener('show.bs.modal', event => {
             const button = event.relatedTarget;
 
-            // Map data attributes to variables
             const id = button.getAttribute('data-id');
             const name = button.getAttribute('data-name');
+            const category = button.getAttribute('data-category');
             const amount = button.getAttribute('data-amount');
             const currency = button.getAttribute('data-currency');
             const method = button.getAttribute('data-method');
             const description = button.getAttribute('data-description');
+            const rawDocuments = button.getAttribute('data-documents');
             const date = button.getAttribute('data-date');
 
-            // Populate Modal Fields
+            // Populate text targets
             document.getElementById('modal_voucher_id').value = id;
             document.getElementById('modal_client_name').value = name;
+            document.getElementById('modal_expense_category').value = category;
             document.getElementById('modal_amount').value = amount;
             document.getElementById('modal_currency').value = currency;
             document.getElementById('modal_payment_method').value = method;
             document.getElementById('modal_description').value = description;
             document.getElementById('modal_created_at').value = date;
             
-            document.getElementById('editVoucherModalLabel').innerHTML = `<i class="bi bi-pencil-square me-2"></i>Edit Approved Voucher #${id}`;
+            // Re-render multi-document view nodes dynamically
+            const previewContainer = document.getElementById('modal_docs_preview_container');
+            previewContainer.innerHTML = ''; 
+
+            if (rawDocuments && rawDocuments.trim() !== "" && rawDocuments !== "[]") {
+                let parsedDocs = [];
+                try {
+                    // Try parsing JSON format first
+                    parsedDocs = JSON.parse(rawDocuments);
+                } catch(e) {
+                    // Fall back to comma separation logic strings
+                    parsedDocs = rawDocuments.split(',');
+                }
+
+                if (Array.isArray(parsedDocs) && parsedDocs.length > 0) {
+                    parsedDocs.forEach((docPath, idx) => {
+                        if (docPath.trim() !== "") {
+                            const cleanPath = docPath.trim();
+                            const fileName = cleanPath.split('/').pop();
+                            const elementId = `voucher-file-${idx}`;
+                            
+                            // Generate the exact named route endpoint url structure using JavaScript string interpolation
+                            const deleteRoute = `/insurance-broking/accounts/payment-vouchers/${id}/delete-file`;
+
+                            // Create the outer layout list row container item matching your design format
+                            const rowDiv = document.createElement('div');
+                            rowDiv.className = 'list-group-item d-flex justify-content-between align-items-center p-3 file-row';
+                            rowDiv.id = elementId;
+
+                            // Build the internal display structural markup layout string
+                            rowDiv.innerHTML = `
+                                <div class="d-flex align-items-center text-truncate me-3">
+                                    <i class="bi bi-file-earmark-text text-primary fs-4 me-3"></i>
+                                    <div class="text-truncate">
+                                        <a href="/storage/${cleanPath}" target="_blank" class="text-decoration-none fw-semibold text-dark text-truncate d-block">
+                                            ${fileName}
+                                        </a>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-outline-danger rounded-pill px-3 flex-shrink-0">
+                                    <i class="bi bi-trash me-1"></i> Delete
+                                </button>
+                            `;
+
+                            // Connect your custom direct asynchronous deletion logic hook right onto the action click event
+                            rowDiv.querySelector('button').onclick = function(e) {
+                                e.preventDefault();
+                                deleteFile(deleteRoute, cleanPath, elementId);
+                            };
+
+                            previewContainer.appendChild(rowDiv);
+                        }
+                    });
+                } else {
+                    showNoAttachmentsMessage(previewContainer);
+                }
+            } else {
+                showNoAttachmentsMessage(previewContainer);
+            }
+
+            document.getElementById('editVoucherModalLabel').innerHTML = `<i class="bi bi-pencil-square me-2"></i>Edit Voucher #${id}`;
         });
     }
 
-    // Confirmation Interception
-    document.getElementById('voucherForm').addEventListener('submit', function(e) {
-        if(!confirm("Are you sure you want to submit this voucher for approval?")) {
-            e.preventDefault();
-        }
-    });
+    // Fix: Updated fallback form validation reference safely if voucherForm uses dynamic targeting properties
+    const voucherForm = document.getElementById('voucherForm') || document.querySelector('form[action*="payment_vouchers.update"]');
+    if (voucherForm) {
+        voucherForm.addEventListener('submit', function(e) {
+            if (!confirm("Are you sure you want to save changes to this voucher?")) {
+                e.preventDefault();
+            }
+        });
+    }
 });
+
+// Universal helper clean fallbacks wrapper notice
+function showNoAttachmentsMessage(container) {
+    container.innerHTML = `
+        <div class="list-group-item text-center text-muted small p-3 bg-light italic">
+            <i class="bi bi-file-earmark-x me-1"></i> No current files attached.
+        </div>
+    `;
+}
+
+// DIRECT AJAX DELETION MECHANISM
+function deleteFile(routeUrl, filePath, elementId) {
+    if (!confirm('Are you sure you want to permanently delete this file?')) return;
+
+    // Fetch CSRF Token directly from the active form context markup definition
+    const token = document.querySelector('input[name="_token"]').value;
+
+    fetch(routeUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': token
+        },
+        body: JSON.stringify({ 
+            file_path: filePath 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Smoothly remove the file element from the DOM mapping grid
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.style.transition = 'all 0.3s ease';
+                element.style.opacity = '0';
+                setTimeout(() => {
+                    element.remove();
+                    
+                    // If everything is deleted, render the empty attachments banner notice fallback block
+                    const previewContainer = document.getElementById('modal_docs_preview_container');
+                    if (previewContainer && previewContainer.children.length === 0) {
+                        showNoAttachmentsMessage(previewContainer);
+                    }
+                }, 300);
+            }
+        } else {
+            alert(data.message || 'Failed to delete the file.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while trying to delete the file.');
+    });
+}
 </script>
 @endpush

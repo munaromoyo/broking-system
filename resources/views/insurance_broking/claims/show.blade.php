@@ -44,7 +44,7 @@
             </span>
 
             {{-- Updated to use Laravel named route --}}
-            <a href="{{ route('insurance_broking.index') }}" class="btn btn-outline-secondary rounded-pill px-4 no-print">
+            <a href="{{ route('insurance_broking.view_list.index', ['action' => 'view_claim_list']) }}" class="btn btn-outline-secondary rounded-pill px-4 no-print">
                 <i class="bi bi-arrow-left me-2"></i>Back to List
             </a>  
         </div>
@@ -123,6 +123,59 @@
             <div class="col-md-6 mb-3">
                 <div class="label-col">Internal Remarks</div>
                 <div class="value-col">{{ $claim->remarks }}</div>
+            </div>
+        </div>
+
+        <!-- ATTACHMENTS -->
+
+        <h5 class="text-primary mb-3 mt-4"><i class="fas fa-file-pdf me-2"></i>Attached Documents</h5>
+        <div class="row">
+            <div class="col-12">
+                <div class="value-col p-3 border rounded bg-light">
+                    <!-- @if(!empty($claim->claim_documents))
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-file-alt text-danger me-3 fs-4"></i>
+                            <div>
+                                <div class="fw-bold">Supporting Document</div>
+                                <a href="{{ asset('storage/' . $claim->claim_documents) }}" 
+                                target="_blank" 
+                                class="btn btn-sm btn-outline-primary mt-1">
+                                <i class="fas fa-eye me-1"></i> View Document
+                                </a>
+                            </div>
+                        </div>
+                    @else
+                        <span class="text-muted italic">No documents uploaded for this claim.</span>
+                    @endif -->
+
+                    @if(!empty($claim->claim_documents))
+                    @php
+                        // Decode the JSON string array from the database into a real PHP array
+                        $documentPaths = json_decode($claim->claim_documents, true);
+                    @endphp
+
+                    @if(is_array($documentPaths) && count($documentPaths) > 0)
+                        <div class="mt-3">
+                            <label class="font-weight-bold">Uploaded Documents:</label>
+                            <ul class="list-group">
+                                @foreach($documentPaths as $index => $path)
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>Document #{{ $index + 1 }}</span>
+                                        
+                                        <a href="{{ Storage::disk('public')->url($path) }}" target="_blank" class="btn btn-sm btn-primary">
+                                            View File
+                                        </a>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        </div>
+                    @else
+                        <span class="text-muted">No documents uploaded.</span>
+                    @endif
+                @else
+                    <span class="text-muted">No documents uploaded.</span>
+                @endif
+                </div>
             </div>
         </div>
 

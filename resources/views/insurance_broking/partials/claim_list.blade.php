@@ -69,7 +69,7 @@
             @endphp
 
             <div class="col-12 col-md-6 col-xl-4 claim-item" data-search="{{ $searchData }}">
-                <a href="{{ url('/insurance_broking/view_claim/index.php?id=' . $claim['id']) }}" 
+                <a href="{{ route('insurance_broking.claims.show', $claim->id) }}" 
                    class="text-decoration-none card h-100 border-0 shadow-sm custom-card">
                     
                     <div class="card-body p-4">

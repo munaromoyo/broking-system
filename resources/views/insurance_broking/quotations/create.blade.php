@@ -152,10 +152,7 @@
             <div class="d-flex gap-2">
                 <a href="{{ route('insurance_broking.quotations.list') }}" class="btn-dashboard-back text-primary border-primary-subtle">
                     <i class="fa fa-list"></i> <span>Quotations Registry</span>
-                </a>
-                <a href="{{ url('insurance-broking/dashboard') }}" class="btn-dashboard-back">
-                    <i class="fa fa-arrow-left"></i> <span>Dashboard</span>
-                </a>        
+                </a>    
             </div>
         </div>
 
@@ -348,7 +345,9 @@
     <div class="card shadow-sm border-0 mx-auto" style="max-width: 800px; border-radius: 12px; overflow: hidden;">
         <div class="card-header bg-primary text-white py-4 px-4 position-relative d-flex justify-content-between align-items-center flex-wrap gap-2">
             <div>
-                <h4 class="mb-1 fw-bold text-start">Potential Client Registration</h4>
+                <h4 class="mb-1 fw-bold text-start">
+                    <i class="fa fa-user-plus me-2"></i>Potential Client Registration
+                </h4>
                 <p class="small mb-0 opacity-75 text-start">Please fill in all required fields marked with (*)</p>
             </div>
             
@@ -356,9 +355,6 @@
                 <a href="{{ route('clients.list') }}" class="btn-back-header">
                     <i class="fa fa-list"></i> Registry
                 </a>
-                <a href="{{ url('insurance-broking/dashboard') }}" class="btn-back-header">
-                    <i class="fa fa-arrow-left"></i> Dashboard
-                </a> 
             </div>
         </div>
         

@@ -1,0 +1,19 @@
+○ mariadb.service - MariaDB 10.6.23 database server
+     Loaded: loaded (/lib/systemd/system/mariadb.service; enabled; vendor preset: enabled)
+     Active: inactive (dead) since Thu 2026-06-18 20:34:24 UTC; 5 days ago
+       Docs: man:mariadbd(8)
+             https://mariadb.com/kb/en/library/systemd/
+   Main PID: 20104 (code=exited, status=0/SUCCESS)
+     Status: "MariaDB server is down"
+        CPU: 4.633s
+
+Jun 18 20:34:23 srv1750341 mariadbd[20104]: 2026-06-18 20:34:23 0 [Note] InnoDB: FTS optimize thread exiting.
+Jun 18 20:34:23 srv1750341 mariadbd[20104]: 2026-06-18 20:34:23 0 [Note] InnoDB: Starting shutdown...
+Jun 18 20:34:23 srv1750341 mariadbd[20104]: 2026-06-18 20:34:23 0 [Note] InnoDB: Dumping buffer pool(s) to /var/lib/mysql/ib_buffer_pool
+Jun 18 20:34:24 srv1750341 mariadbd[20104]: 2026-06-18 20:34:24 0 [Note] InnoDB: Buffer pool(s) dump completed at 260618 20:34:23
+Jun 18 20:34:24 srv1750341 mariadbd[20104]: 2026-06-18 20:34:24 0 [Note] InnoDB: Removed temporary tablespace data file: "./ibtmp1"
+Jun 18 20:34:24 srv1750341 mariadbd[20104]: 2026-06-18 20:34:24 0 [Note] InnoDB: Shutdown completed; log sequence number 10322599; transaction id 1949
+Jun 18 20:34:24 srv1750341 mariadbd[20104]: 2026-06-18 20:34:24 0 [Note] /usr/sbin/mariadbd: Shutdown complete
+Jun 18 20:34:24 srv1750341 systemd[1]: mariadb.service: Deactivated successfully.
+Jun 18 20:34:24 srv1750341 systemd[1]: Stopped MariaDB 10.6.23 database server.
+Jun 18 20:34:24 srv1750341 systemd[1]: mariadb.service: Consumed 4.633s CPU time.

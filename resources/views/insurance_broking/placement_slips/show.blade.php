@@ -221,7 +221,7 @@
 </div>
 @endsection
 
-@push('scripts')
+<!-- @push('scripts')
 <script>
     document.addEventListener('DOMContentLoaded', function() {
     // Listen globally for any Bootstrap modal opening
@@ -270,6 +270,8 @@
                 if (hiddenDaysInput) hiddenDaysInput.value = diffDays;
                 if (refundInput) refundInput.value = calculatedRefund.toFixed(2);
             }
+
+            
 
             // Manage dynamic date selections changing the calculations reactively
             function recalculateProRata() {
@@ -320,6 +322,88 @@
         }
     });
 });
+</script>
+@endpush -->
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        
+        // Helper to get consistent date difference
+        function calculateDaysInclusive(start, end) {
+            const startDate = new Date(start);
+            const endDate = new Date(end);
+            
+            // Normalize to midnight to avoid time-of-day offsets
+            const startMidnight = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+            const endMidnight = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+            
+            const diffTime = endMidnight - startMidnight;
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+            
+            // Add 1 for inclusive count (standard for insurance/policy duration)
+            return Math.max(0, diffDays + 1);
+        }
+
+        document.addEventListener('show.bs.modal', function (event) {
+            const modal = event.target;
+            
+            if (modal.id.startsWith('cancelModal')) {
+                const button = event.relatedTarget;
+                if (!button) return;
+
+                const uniqueId     = button.getAttribute('data-id');
+                const premium      = parseFloat(button.getAttribute('data-premium')) || 0;
+                const expiryStr    = button.getAttribute('data-expiry');
+                
+                const refundInput   = modal.querySelector(`[name="manual_refund"]`);
+                const daysSpan      = modal.querySelector(`#displayDays${uniqueId}`);
+                const hiddenDaysInput = modal.querySelector(`#hiddenDays${uniqueId}`);
+                const dateFromInput = modal.querySelector(`#dateFrom${uniqueId}`);
+                const dateToInput   = modal.querySelector(`#dateTo${uniqueId}`);
+                const reversalCheck = modal.querySelector(`#reversalCheck${uniqueId}`);
+
+                // Initialize Inputs
+                if (expiryStr && dateToInput) dateToInput.value = expiryStr;
+                
+                function updateCalculations() {
+                    if (dateFromInput?.value && dateToInput?.value) {
+                        const days = calculateDaysInclusive(dateFromInput.value, dateToInput.value);
+                        const calculatedRefund = (premium / 365) * days;
+                        
+                        if (daysSpan) daysSpan.innerText = days;
+                        if (hiddenDaysInput) hiddenDaysInput.value = days;
+                        
+                        // Update refund only if NOT in full reversal mode
+                        if (refundInput && (!reversalCheck || !reversalCheck.checked)) {
+                            refundInput.value = calculatedRefund.toFixed(2);
+                        }
+                    }
+                }
+
+                // Initial run using 'today' as start date
+                const today = new Date().toISOString().split('T')[0];
+                if (dateFromInput) dateFromInput.value = today;
+                updateCalculations();
+
+                // Listeners
+                dateFromInput?.addEventListener('change', updateCalculations);
+                dateToInput?.addEventListener('change', updateCalculations);
+
+                if (reversalCheck) {
+                    reversalCheck.addEventListener('change', function() {
+                        if (this.checked) {
+                            refundInput.value = premium.toFixed(2);
+                            refundInput.style.color = '#004085';
+                        } else {
+                            updateCalculations();
+                            refundInput.style.color = '';
+                        }
+                    });
+                }
+            }
+        });
+    });
 </script>
 @endpush
 

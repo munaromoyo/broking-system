@@ -15,7 +15,7 @@
             <h3 class="fw-bold m-0 text-dark">Edit Claim Record</h3>
             <p class="text-muted small mb-0">Insured: {{ $claim->client_name }}</p>
         </div>
-        <a href="{{ route('insurance_broking.index') }}" class="btn btn-outline-secondary rounded-pill px-4">
+        <a href="{{ route('insurance_broking.view_list.index', ['action' => 'view_claim_list']) }}" class="btn btn-outline-secondary rounded-pill px-4">
             <i class="bi bi-arrow-left me-2"></i>Back to List
         </a>
     </div>
@@ -23,19 +23,29 @@
     <div class="card claim-card">
         <div class="card-body p-4 p-md-5">
             {{-- Updated to Laravel form action --}}
-            <form method="POST" action="{{ route('insurance_broking.claims.update', $claim->id) }}">
+            <form method="POST" action="{{ route('insurance_broking.claims.update', $claim->id) }}" enctype="multipart/form-data">
                 @csrf
-                @method('PUT') {{-- Using PUT for updates --}}
+                @method('PUT') {{-- Spoofs the POST request into a PUT request --}}
+
+                {{-- Handle Flash System Messages --}}
+                @if(session('error'))
+                    <div class="alert alert-danger">{{ session('error') }}</div>
+                @endif
+                @if(session('success'))
+                    <div class="alert alert-success">{{ session('success') }}</div>
+                @endif
 
                 {{-- Display Laravel Validation Errors --}}
                 @if ($errors->any())
                     <div class="alert alert-danger border-0 shadow-sm mb-4">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
-                        <ul class="mb-0">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <ul class="mb-0 ps-3">
+                                @foreach ($errors->all() as $error)
+                                    <li>{{ $error }}</li>
+                                @endforeach
+                            </ul>
+                        </div>
                     </div>
                 @endif
 
@@ -111,6 +121,51 @@
                             <label>Internal Remarks / Notes</label>
                         </div>
                     </div>
+                    <!-- <div class="form-group">
+                        <label>Upload Document</label>
+                        <input type="file" name="claim_documents[]" class="form-control" multiple>
+                        @if($claim->claim_documents)
+                            <small>Current file: <a href="{{ asset('storage/' . $claim->claim_documents) }}" target="_blank">View File</a></small>
+                        @endif
+                    </div> -->
+
+                    <div class="mb-4">
+                        <label class="form-label fw-bold mb-2">Claim Documents</label>
+                        
+                        @if($claim->claim_documents)
+                            @php
+                                $documents = is_array($claim->claim_documents) 
+                                    ? $claim->claim_documents 
+                                    : json_decode($claim->claim_documents, true) ?? [$claim->claim_documents];
+                            @endphp
+
+                            <div class="list-group mb-3 shadow-sm rounded">
+                                @foreach($documents as $index => $file)
+                                    <div class="list-group-item d-flex justify-content-between align-items-center p-3 file-row" id="file-{{ $index }}">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-file-earmark-text text-primary fs-4 me-3"></i>
+                                            <div>
+                                                <a href="{{ asset('storage/' . $file) }}" target="_blank" class="text-decoration-none fw-semibold text-dark">
+                                                    {{ basename($file) }}
+                                                </a>
+                                            </div>
+                                        </div>
+                                        
+                                        <button type="button" 
+                                                class="btn btn-sm btn-outline-danger rounded-pill px-3"
+                                                onclick="deleteFile('{{ route('insurance_broking.claims.delete_file', $claim->id) }}', '{{ $file }}', 'file-{{ $index }}')">
+                                            <i class="bi bi-trash me-1"></i> Delete
+                                        </button>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
+
+                        <div class="form-group">
+                            <label class="form-label text-muted small">Upload Additional Documents</label>
+                            <input type="file" name="claim_documents[]" class="form-control" multiple>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Financial Settlement -->
@@ -153,3 +208,42 @@
     </div>
 </div>
 @endsection
+
+
+@push('scripts')
+<script>
+function deleteFile(routeUrl, filePath, elementId) {
+    if (!confirm('Are you sure you want to permanently delete this file?')) return;
+
+    // Fetch CSRF Token from the form
+    const token = document.querySelector('input[name="_token"]').value;
+
+    fetch(routeUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': token
+        },
+        body: JSON.stringify({ 
+            file_path: filePath 
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Smoothly remove the file element from the DOM
+            const element = document.getElementById(elementId);
+            element.style.transition = 'all 0.3s ease';
+            element.style.opacity = '0';
+            setTimeout(() => element.remove(), 300);
+        } else {
+            alert(data.message || 'Failed to delete the file.');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while trying to delete the file.');
+    });
+}
+</script>
+@endpush

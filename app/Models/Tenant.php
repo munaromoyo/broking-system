@@ -10,7 +10,7 @@ use Stancl\Tenancy\Database\Concerns\HasDomains;
 class Tenant extends BaseTenant implements TenantWithDatabase
 {
     use HasDatabase, HasDomains;
-
+    protected $table = 'tenants';
     /**
      * Custom attributes that will automatically save into your 'data' JSON column
      */

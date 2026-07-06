@@ -157,7 +157,7 @@
                     <span class="text-red">E</span>: {{ $email }}
                 </td>
                 <td style="text-align: right; vertical-align: top;">
-                    <img src="https://api.qrserver.com/v1/create-qr-code/?size=100x100&data={{ urlencode($qrString) }}" style="width: 70px; height: 70px;" alt="Header Verification QR">
+                    <img src="{{ $qrString }}" style="width: 70px; height: 70px;" alt="Header Verification QR">
                 </td>
             </tr>
         </table>

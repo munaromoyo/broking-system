@@ -77,7 +77,7 @@
                 <td class="statement-label">STATEMENT OF ACCOUNT</td>
                 <td style="text-align: right; font-size: 11px; vertical-align: bottom;">
                     <b>Date:</b> {{ $date }}<br>
-                    <b>Currency:</b> {{ $selected_curr }}
+                    <b>Currency:</b> {{ $selectedCurr }}
                 </td>
             </tr>
         </table>
@@ -86,7 +86,7 @@
     <table class="content-table">
         <tr>
             <th class="tableheader3">CLIENT NAME</th>
-            <td class="tabledata3"><strong>{{ $selected_client }}</strong></td>
+            <td class="tabledata3"><strong>{{ $selectedClient }}</strong></td>
         </tr>
     </table>
 
@@ -103,7 +103,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($filtered_invoices as $inv)
+                @forelse($filteredInvoices as $inv)
                 <tr>
                     <td>INV#{{ str_pad($inv->invoice_number ?? $inv['invoice_number'], 4, "0", STR_PAD_LEFT) }}</td>
                     <td>{{ isset($inv->created_at) ? (\Illuminate\Support\Carbon::parse($inv->created_at)->format('Y-m-d')) : ($inv['created_at'] ?? 'N/A') }}</td>
@@ -133,7 +133,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($filtered_receipts as $rec)
+                @forelse($filteredReceipts as $rec)
                 <tr>
                     <td>REC#{{ str_pad($rec['receipt_number'] ?? $rec->receipt_number, 4, "0", STR_PAD_LEFT) }}</td>
                     <td>{{ $rec['receipt_date'] ?? $rec->receipt_date }}</td>
@@ -162,7 +162,7 @@
                 </tr>
             </thead>
             <tbody>
-                @forelse($filtered_cancellations as $slip)
+                @forelse($filteredCancellations as $slip)
                 <tr>
                     <td>{{ $slip['slip_id'] ?? $slip->slip_id }}</td>
                     <td>{{ $slip['policy_name'] ?? $slip->policy_name }}</td>
@@ -182,20 +182,20 @@
         <table class="content-table">
             <tr>
                 <td class="tabledata3" style="border: 0; padding: 4px 8px;">Total Invoiced:</td>
-                <td class="tabledata3" style="text-align: right; border: 0; padding: 4px 8px;">{{ number_format($total_invoiced, 2) }}</td>
+                <td class="tabledata3" style="text-align: right; border: 0; padding: 4px 8px;">{{ number_format($totalInvoiced, 2) }}</td>
             </tr>
             <tr>
                 <td class="tabledata3" style="border: 0; padding: 4px 8px;">Total Paid:</td>
-                <td class="tabledata3" style="text-align: right; color: green; border: 0; padding: 4px 8px;">({{ number_format($total_paid, 2) }})</td>
+                <td class="tabledata3" style="text-align: right; color: green; border: 0; padding: 4px 8px;">({{ number_format($totalPaid, 2) }})</td>
             </tr>
             <tr>
                 <td class="tabledata3" style="border: 0; padding: 4px 8px;">Total Cancelled:</td>
-                <td class="tabledata3" style="text-align: right; color: red; border: 0; padding: 4px 8px;">({{ number_format($total_cancelled, 2) }})</td>
+                <td class="tabledata3" style="text-align: right; color: red; border: 0; padding: 4px 8px;">({{ number_format($totalCancelled, 2) }})</td>
             </tr>
             <tr class="total-row">
                 <td class="tabledata3" style="border-top: 1px solid #333; border-bottom: 1px solid #333; padding: 6px 8px;">BALANCE DUE:</td>
                 <td class="tabledata3" style="text-align: right; color: red; border-top: 1px solid #333; border-bottom: 1px solid #333; padding: 6px 8px;">
-                    {{ $selected_curr }} {{ number_format($balance_due, 2) }}
+                    {{ $selectedCurr }} {{ number_format($balanceDue, 2) }}
                 </td>
             </tr>
         </table>

@@ -2,8 +2,10 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory; // Added this
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PlacingSlip extends Model
 {
@@ -12,8 +14,10 @@ class PlacingSlip extends Model
     // Explicitly define the table name from your legacy database
     protected $table = 'slip_register';
 
-    // Disable timestamps if your table doesn't use created_at/updated_at
-    public $timestamps = false;
+    protected $primaryKey = 'id';
+
+    // Keep enabled if your table uses standard created_at/updated_at columns
+    public $timestamps = true;
 
     protected $fillable = [
         'user', 'insured', 'nature_of_business', 'principal_address', 
@@ -29,37 +33,46 @@ class PlacingSlip extends Model
     ];
 
     /**
+     * Get the attributes that should be cast.
+     */
+    protected function casts(): array
+    {
+        return [
+            'policy_start_date' => 'date',
+            'policy_expiry_date' => 'date',
+        ];
+    }
+
+    /**
+     * Get the user that registered this placing slip.
+     */
+    public function creator(): BelongsTo
+    {
+        // Explicitly mapping 'user' prevents runtime lookup type crashes
+        return $this->belongsTo(User::class, 'user');
+    }
+
+    /**
      * Get the insurances for the placing slip.
      */
-    public function insurances()
+    public function insurances(): HasMany
     {
-        // Ensure 'insured' is the foreign key on the 'insurances' table
         return $this->hasMany(Insurance::class, 'insured', 'id');
     }
-
-    // Inside Slip model
-    public function invoice() {
-        return $this->hasOne(Invoice::class, 'slip_number');
-    }
-
 
     /**
      * Get the cancellation logs for this placing slip.
      */
-    public function cancellations()
+    public function cancellations(): HasMany
     {
-        // 'slip_id' is the foreign key on the 'slip_cancellation' table
         return $this->hasMany(SlipCancellation::class, 'slip_id');
     }
 
     /**
      * Get the invoices associated with this placing slip.
      */
-    public function invoices()
+    public function invoices(): HasMany
     {
-        // 'slip_number' is the foreign key on the 'invoices' table
         return $this->hasMany(Invoice::class, 'slip_number');
     }
-
-    protected $primaryKey = 'id'; // Replace with your actual column name
 }

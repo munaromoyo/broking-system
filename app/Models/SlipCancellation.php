@@ -6,15 +6,19 @@ use Illuminate\Database\Eloquent\Model;
 
 class SlipCancellation extends Model
 {
-    // Point to your specific table name
     protected $table = 'slip_cancellation';
 
-    // Disable timestamps if the table doesn't have created_at/updated_at
-    public $timestamps = false;
-    
-    // If you need to allow mass assignment later for creating records
-    protected $guarded = []; 
+    // Disabling timestamps is correct since you are manually providing 
+    // cancellation_date and cancelled_at in your controller.
+    public $timestamps = true;
 
+    // Mass assignment: Using $fillable is safer than $guarded in production
+    protected $fillable = [
+        'slip_id', 'insurance_policy', 'insured_name', 'basic_premium', 
+        'premium_refund', 'policy_currency', 'cancelled_by', 
+        'cancellation_date', 'cancellation_date_from', 
+        'cancellation_date_to', 'remarks'
+    ];
 
     /**
      * Get the placing slip that owns this cancellation log.
@@ -25,7 +29,7 @@ class SlipCancellation extends Model
     }
 
     public function creditNote()
-{
-    return $this->hasOne(CreditNote::class, 'slip_id', 'slip_id');
-}
+    {
+        return $this->hasOne(CreditNote::class, 'slip_id', 'slip_id');
+    }
 }

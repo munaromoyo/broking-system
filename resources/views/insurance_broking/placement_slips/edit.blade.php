@@ -217,7 +217,7 @@
                 </div>
                 <div class="form-group">
                     <label>Total Sum Insured</label>
-                    <input type="number" step="0.01" class="form-control" name="total_sum_insured" value="{{ old('total_sum_insured', $placement->total_sum_insured) }}"> 
+                    <input type="number" step="any" class="form-control" name="total_sum_insured" value="{{ old('total_sum_insured', $placement->total_sum_insured) }}"> 
                 </div>
                 <div class="form-group">
                     <label>Basic Rate (%)</label>
@@ -225,39 +225,39 @@
                 </div>
                 <div class="form-group">
                     <label>Basic Premium</label>
-                    <input type="number" step="0.01" class="form-control" name="basic_premium" value="{{ old('basic_premium', $placement->basic_premium) }}"> 
+                    <input type="number" step="any" class="form-control" name="basic_premium" value="{{ old('basic_premium', $placement->basic_premium) }}"> 
                 </div>
                 <div class="form-group">
                     <label>Discount Rate (%)</label>
-                    <input type="number" step="0.01" class="form-control" name="discount_rate" value="{{ old('discount_rate', $placement->discount_rate) }}"> 
+                    <input type="number" step="any" class="form-control" name="discount_rate" value="{{ old('discount_rate', $placement->discount_rate) }}"> 
                 </div>
                 <div class="form-group">
                     <label>Discount Amount</label>
-                    <input type="number" step="0.01" class="form-control" name="discount" value="{{ old('discount', $placement->discount) }}"> 
+                    <input type="number" step="any" class="form-control" name="discount" value="{{ old('discount', $placement->discount) }}"> 
                 </div>
                 <div class="form-group">
                     <label>Premium Levy Rate (%)</label>
-                    <input type="number" step="0.01" class="form-control" name="premium_levy_rate" value="{{ old('premium_levy_rate', $placement->premium_levy_rate) }}">
+                    <input type="number" step="any" class="form-control" name="premium_levy_rate" value="{{ old('premium_levy_rate', $placement->premium_levy_rate) }}">
                 </div>
                 <div class="form-group">
                     <label>Premium Levy Amount</label>
-                    <input type="number" step="0.01" class="form-control" name="premium_levy" value="{{ old('premium_levy', $placement->premium_levy) }}">
+                    <input type="number" step="any" class="form-control" name="premium_levy" value="{{ old('premium_levy', $placement->premium_levy) }}">
                 </div>
                 <div class="form-group">
                     <label>Broker Commission Rate (%)</label>
-                    <input type="number" step="0.01" class="form-control" name="commission_rate" value="{{ old('commission_rate', $placement->commission_rate) }}">
+                    <input type="number" step="any" class="form-control percent-autoshift" name="commission_rate" value="{{ old('commission_rate', $placement->commission_rate) }}">
                 </div>
                 <div class="form-group">
                     <label>Broker Commission Amount</label>
-                    <input type="number" step="0.01" class="form-control" name="commission_amount" value="{{ old('commission_amount', $placement->commission_amount) }}">
+                    <input type="number" step="any" class="form-control" name="commission_amount" value="{{ old('commission_amount', $placement->commission_amount) }}">
                 </div>
                 <div class="form-group">
                     <label>Insurer Premium</label>
-                    <input type="number" step="0.01" class="form-control" name="insurer_premium" value="{{ old('insurer_premium', $placement->insurer_premium) }}">
+                    <input type="number" step="any" class="form-control" name="insurer_premium" value="{{ old('insurer_premium', $placement->insurer_premium) }}">
                 </div>
                 <div class="form-group">
                     <label>Gross Premium (Payable)</label>
-                    <input type="number" step="0.01" class="form-control premium-input" name="gross_premium" style="background-color: #fffafa;" value="{{ old('gross_premium', $placement->gross_premium) }}">
+                    <input type="number" step="any" class="form-control premium-input" name="gross_premium" style="background-color: #fffafa;" value="{{ old('gross_premium', $placement->gross_premium) }}">
                 </div>
             </div>
 
@@ -269,7 +269,7 @@
                 </div>
                 <div class="form-group">
                     <label>Payment Made</label>
-                    <input type="number" step="0.01" min="0" class="form-control" name="payment_made" placeholder="0.00" value="{{ old('payment_made', $placement->payment_made) }}">
+                    <input type="number" step="any" min="0" class="form-control" name="payment_made" placeholder="0.00" value="{{ old('payment_made', $placement->payment_made) }}">
                 </div>
                 <div class="form-group">
                     <label>Premium Status</label>
@@ -320,12 +320,20 @@ document.addEventListener('DOMContentLoaded', function() {
         grossOut:    document.querySelector('input[name="gross_premium"]')
     };
 
-    // Helper: Checks if user typed "5" or "0.05" and returns the clean decimal multiplier
+    // // Helper: Safely converts whole percentage input values to decimal multipliers
+    // function normalizeRate(rateValue) {
+    //     // Since input labels explicitly specify Rate (%), always divide by 100
+    //     return rateValue / 100;
+    // }
+
+    // Helper: Dynamically handles both whole percentages (15) and raw decimals (0.15)
     function normalizeRate(rateValue) {
+        // If they typed a whole percentage (like 15 or 5), normalize it to a decimal (0.15 or 0.05)
+        // If they typed a decimal (like 0.15), leave it alone.
         if (rateValue >= 1) {
-            return rateValue / 100; // Convert whole percentage (e.g., 5) to decimal (0.05)
+            return rateValue / 100;
         }
-        return rateValue; // Keep it as-is if it's already a decimal (e.g., 0.05)
+        return rateValue;
     }
 
     // 3. Calculation Logic
@@ -341,6 +349,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const dMultiplier = normalizeRate(rawDiscRate);
         const lMultiplier = normalizeRate(rawLevyRate);
         const cMultiplier = normalizeRate(rawCommRate);
+
+
 
         // Financial formulas using our smart multipliers
         const discountAmt = basic * dMultiplier;

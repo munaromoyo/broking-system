@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use App\Models\CashBook;
+use App\Models\Receipt;
 use App\Models\Invoice;
 use App\Models\PaymentVoucher;
 use App\Models\FixedAsset; // Create these models
@@ -20,7 +20,7 @@ class BalanceSheetController extends Controller
         $asOfDate = Carbon::create($targetYear, 12, 31)->endOfDay();
 
         // 1. Fetch Raw Data
-        $cashBook = CashBook::all();
+        $cashBook = Receipt::all();
         $invoices = Invoice::all();
         $vouchers = PaymentVoucher::where('status', 'approved')->get();
 

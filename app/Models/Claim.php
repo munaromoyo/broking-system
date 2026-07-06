@@ -9,8 +9,9 @@ class Claim extends Model
     // 1. Point to your specific table name
     protected $table = 'claim_register';
 
-    // 2. Disable timestamps if the table doesn't have created_at/updated_at
-    public $timestamps = false;
+    // 2. Enable timestamps so Laravel automatically manages created_at/updated_at
+    public $timestamps = true;
+
 
     /**
      * 3. The attributes that are mass assignable.
@@ -31,9 +32,20 @@ class Claim extends Model
         'remarks', 
         'date_settled', 
         'amount_settled', 
-        'policy_currency'
+        'policy_currency',
+        'claim_documents'
     ];
     
     // Note: I removed protected $guarded = []; because $fillable is already 
     // doing the job of protecting your attributes.
+
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'claim_amount' => 'float',
+        'amount_settled' => 'float',
+    ];
 }

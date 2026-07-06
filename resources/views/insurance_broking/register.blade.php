@@ -1,20 +1,31 @@
 @extends('layouts.app')
 
 @section('title', $section)
-
 @section('content')
 <div class="container-fluid custom_container">
     {{-- Global Messaging --}}
     <div class="mt-3">
-        @if(session('msg'))
+        {{-- Look for 'success' or the generic 'msg' just in case --}}
+        @if(session('success') || session('msg'))
             <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
-                <strong>Success!</strong> {{ session('msg') }}
+                <strong>Success!</strong> {{ session('success') ?? session('msg') }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
             </div>
         @endif
+
+        {{-- Look for custom try/catch 'error' messages --}}
+        @if(session('error'))
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                <strong>Error!</strong> {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        @endif
+
+        {{-- Look for request layer validation array errors --}}
         @if($errors->any())
             <div class="alert alert-danger shadow-sm">
-                <ul class="mb-0">
+                <strong>Validation Errors:</strong>
+                <ul class="mb-0 mt-1">
                     @foreach($errors->all() as $error)
                         <li>{{ $error }}</li>
                     @endforeach
@@ -165,9 +176,10 @@ textarea.form_control {
             </div>       
         </div>
 
-        <form id="signupform" method="POST" action="{{ route('insurance.store') }}">        
+        <form id="signupform" method="POST" action="{{ route('insurance_broking.store') }}">        
             @csrf
-            <input type="hidden" name="register_slip" value="register_slip">
+            <!-- Crucial Hidden Action Field for Controller Routing -->
+            <input type="hidden" name="action" value="register_slip">
 
             <span class="form-section-header">1. Client & Basic Policy Info</span>
             <div class="form_grid">
@@ -285,7 +297,7 @@ textarea.form_control {
 
                 <div class="form_group">
                     <label>Gross Premium (Client Payable)*</label>
-                    <input type="number" step="0.01" class="form_control" id="gross_premium" name="gross_premium" value="{{ old('gross_premium', $cloneData['gross_premium'] ?? '') }}" readonly>
+                    <input type="number" step="0.01" class="form_control" id="gross_premium_slip" name="gross_premium" value="{{ old('gross_premium', $cloneData['gross_premium'] ?? '') }}" readonly>
                 </div>
             </div>
 
@@ -357,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function() {
         commOut: document.getElementById('commission_amount'),
         levyOut: document.getElementById('premium_levy'),
         insOut: document.getElementById('insurer_premium'),
-        grossOut: document.getElementById('gross_premium'),
+        grossOut: document.getElementById('gross_premium_slip'),
         policySelect: document.getElementById('insurance_policy'),
         scopeField: document.getElementById('scope_of_cover'),
         clientSelect: document.getElementById('client_select'),
@@ -365,19 +377,31 @@ document.addEventListener('DOMContentLoaded', function() {
         addressField: document.getElementById('principal_address')
     };
 
+    
+
     // 3. Calculation Logic
     function calculatePremium() {
+        // 1. Debug what the function is reading
+    console.log("Fields object:", fields);
+    console.log("Basic Value:", fields.basic?.value);
+
         const basic = parseFloat(fields.basic.value) || 0;
         const dRate = parseFloat(fields.discRate.value) || 0;
         const cRate = parseFloat(fields.commRate.value) || 0;
 
-        const discountAmt = basic * dRate;
+        // Normalize rates dynamically (converts 15 to 0.15, handles 0.15 gracefully)
+        const disRATE = normalizeRate(dRate);
+        const comRate = normalizeRate(cRate);
+
+        const discountAmt = basic * disRATE;
         const netPremium  = basic - discountAmt;
-        const commAmt     = netPremium * cRate;
+        const commAmt     = netPremium * comRate;
         const levyAmt     = netPremium * 0.05; 
         
         const insurerAmt  = netPremium - commAmt; 
         const grossAmt    = netPremium + levyAmt;
+
+    
 
         if(fields.discOut)  fields.discOut.value  = discountAmt.toFixed(2);
         if(fields.commOut)  fields.commOut.value  = commAmt.toFixed(2);
@@ -385,6 +409,15 @@ document.addEventListener('DOMContentLoaded', function() {
         if(fields.insOut)   fields.insOut.value   = insurerAmt.toFixed(2);
         if(fields.grossOut) fields.grossOut.value = grossAmt.toFixed(2);
     }
+
+    function normalizeRate(rate) {
+    // If the user typed something like 15, convert it to 0.15
+    // If they typed 0.15, leave it as 0.15
+    if (rate > 1) {
+        return rate / 100;
+    }
+    return rate;
+}
 
     // 4. Event Listeners
     // Premium Inputs
@@ -415,13 +448,34 @@ document.addEventListener('DOMContentLoaded', function() {
     {{-- --- 2. MODULE: CLIENT REGISTRATION --- --}}
     @elseif($action == "register_client")
     <div class="card shadow-sm border-0 mx-auto" style="max-width: 900px;">
-        <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="fa fa-user-plus me-2"></i>New Client Registration</h5>
+        <!-- <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+            <div><h5 class="mb-0"><i class="fa fa-user-plus me-2"></i>New Client Registration</h5></div>
+            <div class="d-flex gap-2">
+                <a href="{{ route('clients.list') }}" class="btn-back-header">
+                    <i class="fa fa-list"></i> Registry
+                </a>
+            </div>
+        </div> -->
+        <div class="card-header bg-primary text-white py-4 px-4 position-relative d-flex justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+                <h4 class="mb-1 fw-bold text-start">
+                    <i class="fa fa-user-plus me-2"></i>New Client Registration
+                </h4>
+                <p class="small mb-0 opacity-75 text-start">Please fill in all required fields marked with (*)</p>
+            </div>
+            
+            <div class="d-flex gap-2">
+                <a href="{{ route('clients.list') }}" class="btn btn-sm btn-outline-light bg-transparent text-white border border-white opacity-90 btn-back-header">
+                    <i class="fa fa-list me-1"></i> Registry
+                </a>
+            </div>
         </div>
         <div class="card-body p-4">
-            <form action="{{ route('insurance.store') }}" method="POST" id="signupform" class="needs-validation">
+            <form action="{{ route('insurance_broking.store') }}" method="POST" id="signupform" class="needs-validation">
                 @csrf
-                <input type="hidden" name="action_type" value="client">
+                
+                <!-- Crucial Hidden Action Field for Controller Routing -->
+                <input type="hidden" name="action" value="register_client">
 
                 <!-- Client Name and Type -->
                 <div class="row g-3 mb-4">
@@ -511,9 +565,11 @@ document.addEventListener('DOMContentLoaded', function() {
             </div>
         </div>
         <div class="card-body p-4 p-md-5">
-            <form action="{{ route('insurance.store') }}" method="POST" id="signupform" class="row g-4">
+            <form action="{{ route('insurance_broking.store') }}" method="POST" id="signupform" class="row g-4">
                 @csrf
-                <input type="hidden" name="action_type" value="policy">
+    
+                <!-- Crucial Hidden Action Field for Controller Routing -->
+                <input type="hidden" name="action" value="register_policy">
                 
                 <!-- Policy Name & Class -->
                 <div class="col-md-7">
@@ -553,6 +609,7 @@ document.addEventListener('DOMContentLoaded', function() {
                               placeholder="Internal notes or additional information..." 
                               rows="2">{{ old('remarks_policy') }}</textarea>
                 </div>
+                
 
                 <!-- Action Buttons -->
                 <div class="col-12 pt-3 border-top mt-4">
@@ -590,9 +647,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     @endif
 
-                    <form action="{{ route('insurance.store') }}" method="POST" id="signupform">
+                    <form action="{{ route('insurance_broking.store') }}" method="POST" id="signupform">
                         @csrf
-                        <input type="hidden" name="action_type" value="insurer">
+                        <!-- Crucial Hidden Action Field for Controller Routing -->
+                        <input type="hidden" name="action" value="register_insurer">
 
                         <!-- Insurer Name -->
                         <div class="mb-3">
@@ -677,9 +735,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     <h5 class="mb-0">New Vehicle Registration</h5>
                 </div>
                 <div class="card-body">
-                    <form action="{{ route('insurance.store') }}" method="POST" class="needs-validation" novalidate>
+                    <form action="{{ route('insurance_broking.store') }}" method="POST" class="needs-validation" novalidate>
                         @csrf
-                        <input type="hidden" name="action_type" value="vehicle">
+                        <!-- Crucial Hidden Action Field for Controller Routing -->
+                        <input type="hidden" name="action" value="register_vehicle">
 
                         <div class="row g-3">
                             <!-- Reference Section -->
@@ -765,6 +824,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                 <label class="form-label fw-bold">Total Premium*</label>
                                 <input type="number" step="0.01" min="0.01" class="form-control" name="total_premium" placeholder="0.00" required>
                             </div>
+                            
 
                             <div class="col-12 mt-4 text-end">
                                 <button class="btn btn-secondary me-2" type="reset">Clear Form</button>
@@ -790,11 +850,13 @@ document.addEventListener('DOMContentLoaded', function() {
                         <i class="fa fa-download me-2"></i>Download CSV Template
                     </a>
 
-                    <form action="{{ route('insurance_broking.vehicle_upload.download_template') }}" method="POST" enctype="multipart/form-data" class="mx-auto" style="max-width: 450px;">
+                    <form action="{{ route('insurance_broking.store') }}" method="POST" enctype="multipart/form-data" class="mx-auto" style="max-width: 450px;">
                         @csrf
                         <div class="input-group mb-3">
                             <input type="file" name="vehicle_csv" class="form-control" id="csvUpload" accept=".csv" required>
                         </div>
+                        <!-- Crucial Hidden Action Field for Controller Routing -->
+                        <input type="hidden" name="action" value="bulk_import_vehicle">
                         <button type="submit" class="btn btn-success btn-lg w-100 shadow-sm" onclick="return confirm('Are you sure you want to Start Bulk Upload?');">
                             <i class="fa fa-upload me-2"></i>Start Bulk Processing
                         </button>
@@ -832,9 +894,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             @endif
 
-            <form action="{{ route('insurance.store') }}" method="POST" class="needs-validation" novalidate>
+            <form action="{{ route('insurance_broking.store') }}" method="POST" class="needs-validation" novalidate>
                 @csrf
-                <input type="hidden" name="action_type" value="claim">
+                
+                <!-- Crucial Hidden Action Field for Controller Routing -->
+                <input type="hidden" name="action" value="register_claim">
 
                 <div class="row g-4">
                     <!-- Dates Section -->
@@ -970,7 +1034,7 @@ document.addEventListener('DOMContentLoaded', function() {
         </div>
 
         {{-- Laravel Action Route --}}
-        <form id="signupform" method="POST" action="{{ route('broking.register.store') }}"> 
+        <form id="signupform" method="POST" action="{{ route('broking.store') }}"> 
             @csrf {{-- CRITICAL: Protection for Laravel forms --}}
             
             @if (session('msg'))

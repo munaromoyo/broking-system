@@ -134,6 +134,8 @@
     .btn-insurer { color: #6b21a8; } .btn-insurer .icon-box { background: rgba(168, 85, 247, 0.12); }
     .btn-acc { color: #9a3412; } .btn-acc .icon-box { background: rgba(249, 115, 22, 0.12); }
     .btn-hr { color: #be185d; } .btn-hr .icon-box { background: rgba(236, 72, 153, 0.12); }
+    /* New styles for the certificates button color mapping */
+    .btn-certs { color: #0369a1; } .btn-certs .icon-box { background: rgba(14, 165, 233, 0.12); }
 
     .dropdown { width: 100%; }
     .dropdown-content {
@@ -234,7 +236,7 @@
 
         <div class="dropdown" id="devDropdownContainer">
             <button onclick="toggleDropdown('devDD', 'devDropdownContainer')" class="nav-btn btn-broking">
-                <span class="icon-box"><i class="fas fa-file-contract"></i></span> Development
+                <span class="icon-box"><i class="fas fa-file-contract"></i></span> Business Development
                 <i class="fas fa-chevron-down chevron"></i>
             </button>
             <div id="devDD" class="dropdown-content">
@@ -251,8 +253,26 @@
             </button>
             <div id="insDD" class="dropdown-content">
                 <a href="{{ route('insurance_broking.register', ['action' => 'register_insurer']) }}"><i class="fas fa-university"></i> Insurer Registry</a>
-                <a href="{{ url('/insurance_broking/accounts/payment_voucher') }}"><i class="fas fa-money-check-alt"></i> Payment Vouchers</a>
-                <a href="{{ url('/insurance_broking/accounts/remittance') }}"><i class="fas fa-list-check"></i> Remittance Schedules</a>
+                <a href="{{ route('insurance_broking.accounts.payment_vouchers.show') }}"><i class="fas fa-money-check-alt"></i> Payment Vouchers</a>
+                <a href="{{ route('insurance_broking.accounts.insurer_remittances.show') }}"><i class="fas fa-list-check"></i> Remittance Schedules</a>
+            </div>
+        </div>
+
+        <div class="dropdown" id="certDropdownContainer">
+            <button onclick="toggleDropdown('certDD', 'certDropdownContainer')" class="nav-btn btn-certs">
+                <span class="icon-box"><i class="fas fa-certificate"></i></span> Certificates
+                <i class="fas fa-chevron-down chevron"></i>
+            </button>
+            <div id="certDD" class="dropdown-content">
+                <a href="https://agents.piczportal.com" target="_blank"><i class="fas fa-shield-halved"></i> PICZ Portal</a>
+                <a href="https://purpleinsureapp.com" target="_blank"><i class="fas fa-shield-halved"></i> Hollard</a>
+                <a href="#"><i class="fas fa-shield-halved"></i> Swan</a>
+                <a href="#"><i class="fas fa-shield-halved"></i> NICO</a>
+                <a href="#"><i class="fas fa-shield-halved"></i> Madison</a>
+                <a href="https://brokers-general-alliance.inshuwa.com" target="_blank"><i class="fas fa-shield-halved"></i> General Alliance</a>
+                <a href="#"><i class="fas fa-shield-halved"></i> Mayfair</a>
+                <a href="#"><i class="fas fa-shield-halved"></i> Discover</a>
+                <a href="#"><i class="fas fa-shield-halved"></i> Phoenix Assurance</a>
             </div>
         </div>
 
@@ -266,7 +286,11 @@
                 <a href="#"><i class="fas fa-user-tie"></i> Employee Directory</a>
                 <a href="#"><i class="fas fa-calendar-check"></i> Leave Management</a>
                 
-                @if(Auth::check() && in_array(Auth::user()->role ?? session('role'), ['Admin', 'Accountant']))
+                {{-- Fixed clean evaluation variable structure --}}
+                @php
+                    $userRole = Auth::check() ? (Auth::user()->role ?? session('role')) : session('role');
+                @endphp
+                @if(in_array($userRole, ['Admin', 'Accountant']))
                     <a href="{{ url('/hr/payroll') }}"><i class="fas fa-file-signature"></i> Payroll</a>
                 @endif
                 

@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Client extends Model
 {
+    use SoftDeletes;
+
    /**
      * The table associated with the model.
      * Overriding the default 'clients' naming convention.
@@ -27,7 +30,10 @@ class Client extends Model
         'contact_number', 
         'email_address', 
         'nature_of_business', 
-        'client_type'
+        'client_type',
+        'created_at',
+        'updated_at'
+
     ];
 
     /**

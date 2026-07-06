@@ -9,6 +9,10 @@ class PaymentVoucher extends Model
 
     protected $table = 'payment_vouchers';
 
+    // Disabling timestamps is correct since you are manually providing 
+    // cancellation_date and cancelled_at in your controller.
+    public $timestamps = true;
+
     // Mass assignable attributes
     protected $fillable = [
         'client_name', 
@@ -21,8 +25,7 @@ class PaymentVoucher extends Model
         'status', // Added so you can default to 'Pending'
         'approved_by',
         'approved_at',
-        'created_at',
-        'updated_by'
+        'supporting_documents'
     ];
     
 
@@ -30,6 +33,7 @@ class PaymentVoucher extends Model
 
     protected $casts = [
     'approved_at' => 'datetime',
+    'supporting_documents' => 'array',
 ];
 
 }

@@ -26,15 +26,17 @@ class Quotation extends Model
         'specific_conditions', 'policy_currency', 'total_sum_insured', 
         'basic_rate', 'basic_premium', 'discount_rate', 'discount', 
         'premium_levy_rate', 'premium_levy', 'gross_premium', 
-        'commission_rate', 'commission_amount', 'insurer_premium', 
-        'payment_made', 'payment_method'
+        'commission_rate', 'commission_amount', 'insurer_premium', 'payment_method'
     ];
+
 
     /**
      * Get the user that created the quotation.
      */
     public function user()
     {
-        return $this->belongsTo(User::class);
+        // ⚠️ Tell Laravel to look for the 'user' column instead of guessing 'user_id'
+        return $this->belongsTo(User::class, 'user');
     }
+
 }

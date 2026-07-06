@@ -26,7 +26,9 @@ use App\Models\Quotation;
 use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Exception;
 
 
 class InsuranceController extends Controller
@@ -93,29 +95,7 @@ public function dashboard(Request $request, $action = 'view_slip_list')
         'user'    => auth()->user(), 
     ];
 
-    // // --- LOGIC FOR VIEW LISTS ---
-    // if (str_starts_with($action, 'view_')) {
-    //     switch ($action) {
-    //         case 'view_slip_list':
-    //             $data['pageTitle'] = 'SLIP LIST';
-    //             $data['placements'] = PlacingSlip::where('status', 'Active')->get();
-    //             break;
-    //         case 'view_claim_list':
-    //             $data['pageTitle'] = 'CLAIM LIST';
-    //             $data['claims'] = Claim::all();
-    //             break;
-    //         case 'view_vehicle_list':
-    //             $data['pageTitle'] = 'VEHICLE LIST';
-    //             $data['vehicles'] = Vehicle::all();
-    //             break;
-    //         case 'view_cancelled_slip_list':
-    //             $data['pageTitle'] = 'CANCELLED SLIP LIST';
-    //             $data['cancellations'] = SlipCancellation::all(); 
-    //             break;
-    //     }
-        
-    //     return view('insurance_broking.view_list.index', $data);
-    // }
+   
 
     // --- LOGIC FOR VIEW LISTS ---
 if (str_starts_with($action, 'view_')) {
@@ -137,7 +117,7 @@ if (str_starts_with($action, 'view_')) {
     switch ($action) {
         case 'view_slip_list':
             $data['pageTitle'] = 'SLIP LIST';
-            $data['placements'] = PlacingSlip::where('status', 'Active')->get();
+            $data['placements'] = PlacingSlip::whereIn('status', ['Active', 'Renewed', 'Expired'])->get();
             break;
             
         case 'view_claim_list':
@@ -185,170 +165,151 @@ if (str_starts_with($action, 'view_')) {
 }
 
     
-    // REGISTRATION FORMS
+    // REGISTRATION FORM
 
-    // 1. REGISTER CLIENT
 
-    public function registerClient(Request $request)
-    {
-        // 1. Validate the incoming data
-        // This replaces the manual 'if(!empty($_POST))' and 'num_rows' checks
-        $validatedData = $request->validate([
-            'client_name'        => 'required|string|unique:clients,client_name',
-            'physical_address'   => 'required|string',
-            'postal_address'     => 'nullable|string',
-            'contact_number'     => 'required|string',
-            'email_address'      => 'required|email',
-            'nature_of_business' => 'required|string',
-            'client_type'        => 'required|string',
-        ], [
-            'client_name.unique' => 'Client already registered.',
-        ]);
+ public function registerClient(Request $request)
+{
 
-        // 2. Format the name (lowercase then Capitalize Each Word)
-        $formattedName = Str::title(Str::lower(trim($request->client_name)));
+    // 1. Validate the incoming data
+    $validatedData = $request->validate([
+        'client_name'        => 'required|string|unique:client_register,client_name',
+        'physical_address'   => 'required|string',
+        'postal_address'     => 'nullable|string',
+        'contact_number'     => 'required|string',
+        'email_address'      => 'required|email',
+        'nature_of_business' => 'required|string',
+        'client_type'        => 'required|string',
+    ], [
+        'client_name.unique' => 'Client already registered.',
+    ]);
 
-        try {
-            // 3. Create the record using Eloquent
-            Client::create([
-                'user'               => Auth::user()->name, // Using Laravel's Auth instead of $_SESSION
-                'client_name'        => $formattedName,
-                'physical_address'   => $request->physical_address,
-                'postal_address'     => $request->postal_address,
-                'contact_number'     => $request->contact_number,
-                'email_address'      => $request->email_address,
-                'nature_of_business' => $request->nature_of_business,
-                'client_type'        => $request->client_type,
-            ]);
-
-            return back()->with('success', 'Client successfully registered');
-
-        } catch (\Exception $e) {
-            return back()->with('error', 'Error: ' . $e->getMessage());
-        }
+    // Check if a user is actually logged in
+    if (!Auth::check()) {
+        return back()->with('error', 'Your session has expired. Please log in again.');
     }
 
+    // 2. Format the name (lowercase then Capitalize Each Word)
+    $formattedName = Str::title(Str::lower(trim($request->client_name)));
 
-    //2. REGISTER POTENTIAL CLIENT
-    /**
-     * Handle Potential Client Registration
-     */
-    protected function registerPotentialClient(Request $request)
-    {
-        // 1. Validation
-        $validated = $request->validate([
-            'client_name'        => 'required|string|max:255|unique:potential_clients,client_name',
-            'physical_address'   => 'required|string',
-            'postal_address'     => 'required|string',
-            'nature_of_business' => 'required|string',
-            'client_type'        => 'required|string',
-            'email_address'      => 'required|email',
-            'contact_number'     => 'required|string',
-        ], [
-            'client_name.unique' => 'This client is already registered.',
+    try {
+        // 3. Create the record using Eloquent
+        Client::create([
+            'user'               => Auth::user()->name ?? 'System Process', // Added a fallback string just in case
+            'client_name'        => $formattedName,
+            'physical_address'   => $request->physical_address,
+            'postal_address'     => $request->postal_address,
+            'contact_number'     => $request->contact_number,
+            'email_address'      => $request->email_address,
+            'nature_of_business' => $request->nature_of_business,
+            'client_type'        => $request->client_type,
         ]);
 
-        // 2. Format name
-        $formattedName = Str::title(Str::lower(trim($request->client_name)));
+        return back()->with('success', 'Client successfully registered');
 
-        try {
-            // 3. Save via PotentialClient Model
-            // This automatically handles 'created_at' and 'updated_at'
-            PotentialClient::create([
-                'user'               => Auth::user()->name, 
-                'client_name'        => $formattedName,
-                'physical_address'   => $request->physical_address,
-                'postal_address'     => $request->postal_address,
-                'nature_of_business' => $request->nature_of_business,
-                'client_type'        => $request->client_type,
-                'email_address'      => $request->email_address,
-                'contact_number'     => $request->contact_number,
-            ]);
-
-            return redirect()->route('broking.register', ['action' => 'register_potential_client'])
-                            ->with('msg', 'Client ' . $formattedName . ' successfully registered');
-
-        } catch (\Exception $e) {
-            return back()->withErrors('Error saving client: ' . $e->getMessage())->withInput();
-        }
+    } catch (\Exception $e) {
+        return back()->with('error', 'Error: ' . $e->getMessage());
     }
+}
 
+// REGISTER_VEHICLE
 
-    //3. REGISTER VEHICLE
     public function registerVehicle(Request $request)
-    {
-        // --- SCENARIO 1: SINGLE MANUAL ENTRY ---
-        if ($request->has('vehicle_register')) {
-            $request->validate([
-                'chassis_number'     => 'required|unique:vehicles,chassis_number',
-                'reg_number'         => 'required|string',
-                'slip_number'        => 'required',
-                'policy_start_date'  => 'required|date',
-                'policy_expiry_date' => 'required|date|after:policy_start_date',
-                'sum_insured'        => 'required|numeric',
-                'total_premium'      => 'required|numeric',
-            ], [
-                'chassis_number.unique' => 'This vehicle (Chassis) is already registered in the system.'
-            ]);
+{
+    // --- SCENARIO 1: SINGLE MANUAL ENTRY ---
+    if ($request->input('action') === 'register_vehicle') {
+        $validated = $request->validate([
+            'chassis_number'     => 'required|string|unique:vehicle_register,chassis_number|max:255',
+            'reg_number'         => 'required|string|max:50',
+            'slip_number'        => 'required|string|max:100',
+            'policy_start_date'  => 'required|date',
+            'policy_expiry_date' => 'required|date|after:policy_start_date',
+            'sum_insured'        => 'required|numeric|min:0',
+            'total_premium'      => 'required|numeric|min:0',
+            // Capturing optional form fields safely
+            'insurer_name'       => 'nullable|string|max:255',
+            'client_name'        => 'nullable|string|max:255',
+            'vehicle_make'       => 'nullable|string|max:255',
+            'engine_number'      => 'nullable|string|max:255',
+            'policy_type'        => 'nullable|string|max:255',
+            'policy_currency'    => 'nullable|string|max:10',
+        ], [
+            'chassis_number.unique' => 'This vehicle (Chassis) is already registered in the system.'
+        ]);
 
-            Vehicle::create(array_merge($request->all(), [
-                'user' => Auth::user()->name ?? 'System'
-            ]));
+        // Save safely using explicitly validated fields
+        Vehicle::create(array_merge($validated, [
+            'user' => Auth::user()->name ?? auth()->user()->name ?? 'System'
+        ]));
 
-            return redirect()->route('broking.register', ['action' => 'register_vehicle'])
-                            ->with('msg', 'Vehicle ' . $request->reg_number . ' successfully registered!');
-        }
+        return redirect()->route('insurance_broking.register', ['action' => 'register_vehicle'])
+                         ->with('success', 'Vehicle ' . $validated['reg_number'] . ' successfully registered!');
+    }
 
-        // --- SCENARIO 2: BULK CSV IMPORT ---
-        if ($request->has('bulk_import_vehicle') && $request->hasFile('vehicle_csv')) {
-            $file = $request->file('vehicle_csv');
-            $path = $file->getRealPath();
-            $currentUser = Auth::user()->name ?? 'System';
-            $importCount = 0;
+    // --- SCENARIO 2: BULK CSV IMPORT ---
+    if ($request->input('action') === 'bulk_import_vehicle' && $request->hasFile('vehicle_csv')) {
+        
+        $request->validate([
+            'vehicle_csv' => 'required|file|mimes:csv,txt'
+        ]);
 
-            if (($handle = fopen($path, "r")) !== FALSE) {
-                fgetcsv($handle); // Skip the header row
+        $file = $request->file('vehicle_csv');
+        $path = $file->getRealPath();
+        $currentUser = Auth::user()->name ?? auth()->user()->name ?? 'System';
+        $importCount = 0;
 
-                DB::beginTransaction();
-                try {
-                    while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
-                        // Basic validation: skip rows where registration or chassis is missing
-                        if (empty($data[3]) || empty($data[5])) continue;
+        if (($handle = fopen($path, "r")) !== FALSE) {
+            fgetcsv($handle); // Skip header row
 
-                        Vehicle::create([
-                            'user'               => $currentUser,
-                            'slip_number'        => $data[0] ?? null,
-                            'insurer_name'       => $data[1] ?? null,
-                            'client_name'        => $data[2] ?? null,
-                            'reg_number'         => $data[3] ?? null,
-                            'vehicle_make'       => $data[4] ?? null,
-                            'chassis_number'     => $data[5] ?? null,
-                            'engine_number'      => $data[6] ?? null,
-                            'policy_start_date'  => $this->parseCsvDate($data[7] ?? null),
-                            'policy_expiry_date' => $this->parseCsvDate($data[8] ?? null),
-                            'policy_type'        => $data[9] ?? null,
-                            'policy_currency'    => $data[10] ?? 'ZMW',
-                            'sum_insured'        => (double)($data[11] ?? 0),
-                            'total_premium'      => (double)($data[12] ?? 0),
-                        ]);
-                        $importCount++;
+            DB::beginTransaction();
+            try {
+                while (($data = fgetcsv($handle, 1000, ",")) !== FALSE) {
+                    if (count($data) < 6 || empty($data[3]) || empty($data[5])) {
+                        continue;
                     }
 
-                    DB::commit();
-                    fclose($handle);
-                    return redirect()->route('broking.register', ['action' => 'register_vehicle'])
-                                    ->with('msg', "Successfully imported $importCount vehicles!");
+                    // Skips duplicate chassis numbers silently to prevent a full batch crash
+                    $chassisExists = Vehicle::where('chassis_number', $data[5])->exists();
+                    if ($chassisExists) {
+                        continue; 
+                    }
 
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    fclose($handle);
-                    return back()->withErrors('Import Error: ' . $e->getMessage());
+                    Vehicle::create([
+                        'user'               => $currentUser,
+                        'slip_number'        => $data[0] ?? null,
+                        'insurer_name'       => $data[1] ?? null,
+                        'client_name'        => $data[2] ?? null,
+                        'reg_number'         => $data[3] ?? null,
+                        'vehicle_make'       => $data[4] ?? null,
+                        'chassis_number'     => $data[5] ?? null,
+                        'engine_number'      => $data[6] ?? null,
+                        'policy_start_date'  => $this->parseCsvDate($data[7] ?? null),
+                        'policy_expiry_date' => $this->parseCsvDate($data[8] ?? null),
+                        'policy_type'        => $data[9] ?? null,
+                        'policy_currency'    => $data[10] ?? 'ZMW',
+                        'sum_insured'        => (double)($data[11] ?? 0),
+                        'total_premium'      => (double)($data[12] ?? 0),
+                    ]);
+                    $importCount++;
                 }
+
+                DB::commit();
+                fclose($handle);
+                
+                return redirect()->route('insurance_broking.register', ['action' => 'register_vehicle'])
+                                 ->with('success', "Successfully imported $importCount vehicles!");
+
+            } catch (\Exception $e) {
+                DB::rollBack();
+                fclose($handle);
+                return back()->withInput()->withErrors('Import Error: ' . $e->getMessage());
             }
         }
-
-        return back()->withErrors('No valid registration action detected.');
     }
+
+    // Fallback if neither condition matches perfectly
+    return back()->withInput()->withErrors('No valid registration action detected.');
+}
 
 
     // 4. REGISTER CLAIM
@@ -356,205 +317,156 @@ if (str_starts_with($action, 'view_')) {
      * Handle Claim Registration
      */
     protected function registerClaim(Request $request)
-    {
-        // 1. Advanced Validation
-        // This checks 'unique' across two columns (date_of_loss and client_name)
-        $validated = $request->validate([
-            'client_name'           => 'required|string',
-            'date_of_loss'          => [
-                'required',
-                'date',
-                Rule::unique('claims')->where(function ($query) use ($request) {
-                    return $query->where('client_name', $request->client_name)
-                                ->where('date_of_loss', $request->date_of_loss);
-                }),
-            ],
-            'claim_amount'          => 'required|numeric|min:0',
-            'insurer_name'          => 'required|string',
-            'type_of_claim'         => 'required|string',
-            'claim_intimation_date' => 'nullable|date',
-            'date_of_notification'  => 'nullable|date',
-            'details_of_loss'       => 'nullable|string',
-            'documents_received'    => 'nullable|string',
-            'claim_status'          => 'required|string',
-        ], [
-            'date_of_loss.unique' => 'A claim for this client on this specific date has already been registered.',
-        ]);
-
-        // 2. Create the record using Eloquent
-        Claim::create([
-            'user'                  => Auth::user()->name ?? 'System', 
-            'claim_intimation_date' => $request->claim_intimation_date,
-            'insurer_name'          => $request->insurer_name,
-            'client_name'           => $request->client_name,
-            'type_of_claim'         => $request->type_of_claim,
-            'date_of_loss'          => $request->date_of_loss,
-            'date_of_notification'  => $request->date_of_notification,
-            'details_of_loss'       => $request->details_of_loss,
-            'claim_amount'          => $request->claim_amount,
-            'documents_received'    => $request->documents_received,
-            'claim_status'          => $request->claim_status,
-        ]);
-
-        // 3. Success Response
-        return redirect()->route('insurance_broking.register', ['action' => 'register_claim'])
-                        ->with('msg', 'Claim for ' . $request->client_name . ' successfully registered');
-    }
-
-
-// 5. REGISTER QUOTATION
-/**
- * Handle Quote Registration with Validation
- */
-protected function registerQuote(Request $request)
 {
-    // 1. Validation
-    $request->validate([
-        'insured'            => 'required|string',
-        'insurer'            => 'required|string',
-        'insurance_policy'   => 'required|string',
-        'basic_premium'      => 'required|numeric',
-        'policy_start_date'  => 'required|date',
-        'policy_expiry_date' => 'required|date|after:policy_start_date',
-        'quote_status'       => 'required|string', // Validating the new field
+    // 1. Advanced Validation
+    // This checks 'unique' across four columns (date_of_loss, client_name, date_of_notification, and type_of_claim)
+    $validated = $request->validate([
+        'client_name'           => 'required|string',
+        'date_of_notification'  => 'required|date', 
+        'type_of_claim'         => 'required|string',
+        'date_of_loss'          => [
+            'required',
+            'date',
+            Rule::unique('claim_register', 'date_of_loss')->where(function ($query) use ($request) {
+                return $query->where('client_name', $request->client_name)
+                             ->where('date_of_notification', $request->date_of_notification)
+                             ->where('type_of_claim', $request->type_of_claim);
+            }),
+        ],
+        'claim_amount'          => 'required|numeric|min:0',
+        'insurer_name'          => 'required|string',
+        'claim_intimation_date' => 'nullable|date',
+        'details_of_loss'       => 'nullable|string',
+        'documents_received'    => 'nullable|string',
+        'claim_status'          => 'required|string',
+    ], [
+        'date_of_loss.unique' => 'A claim for this client with this specific type and dates has already been registered.',
     ]);
 
-    // 2. Financial Calculations (Ensures integrity on the server)
-    $basic = (float)$request->basic_premium;
-    $discRate = (float)($request->discount_rate ?? 0);
-    $discountAmt = ($discRate / 100) * $basic;
-    
-    $netPremium = $basic - $discountAmt;
-    $levyRate = (float)($request->premium_levy_rate ?? 5); // Default to 5%
-    $levyAmt = $netPremium * ($levyRate / 100);
-    $grossTotal = $netPremium + $levyAmt;
+    // 2. Create the record using Eloquent
+    Claim::create(array_merge($validated, [
+        'user' => Auth::user()->name ?? 'System', 
+    ]));
 
-    // 3. Save via Eloquent Model
-    Quotation::create([
-        'user'                => Auth::user()->name,
-        'insured'             => $request->insured,
-        'nature_of_business'  => $request->nature_of_business,
-        'principal_address'   => $request->principal_address,
-        'policy_start_date'   => $request->policy_start_date,
-        'policy_expiry_date'  => $request->policy_expiry_date,
-        'insurer'             => $request->insurer,
-        'cancellation_clause' => $request->cancellation_clause,
-        'placing_slip_clause' => $request->placing_slip_clause,
-        'insurance_policy'    => $request->insurance_policy,
-        'scope_of_cover'      => $request->scope_of_cover,
-        'extensions'          => $request->extensions,
-        'excess_deductible'   => $request->excess_deductible,
-        'property_insured'    => $request->property_insured,
-        'location_of_risk'    => $request->location_of_risk,
-        'specific_warranties' => $request->specific_warranties,
-        'specific_conditions' => $request->specific_conditions,
-        'policy_currency'     => $request->policy_currency,
-        'total_sum_insured'   => $request->total_sum_insured,
-        'basic_rate'          => $request->basic_rate,
-        'basic_premium'       => $basic,
-        'discount_rate'       => $discRate,
-        'discount'            => $discountAmt,
-        'premium_levy_rate'   => $levyRate,
-        'premium_levy'        => $levyAmt,
-        'gross_premium'       => $grossTotal,
-        'payment_method'      => $request->payment_method,
-        'quote_status'        => $request->quote_status, // New Field
-    ]);
-
-    // 4. Redirect with success message
-    return redirect()->route('broking.register', ['action' => 'register_quote'])
-                     ->with('msg', 'Quote successfully registered');
+    // 3. Success Response
+    return redirect()->route('insurance_broking.register', ['action' => 'register_claim'])
+                     ->with('success', 'Claim for ' . $request->client_name . ' successfully registered');
 }
+
+
 
 
 // 6. REGISTER SLIP
 
-/**
- * Handle Placement Slip Registration
- */
+
 protected function registerSlip(Request $request)
 {
-    // 1. Validation
-    $request->validate([
-        'insured' => 'required|string',
-        'insurer' => 'required|string',
-        'policy_start_date' => 'required|date',
-        'policy_expiry_date' => 'required|date|after:policy_start_date',
-        'total_sum_insured' => 'required|numeric',
-        'basic_premium' => 'required|numeric',
-        // Add more validation as needed
+    // 1. Comprehensive Validation
+    $validated = $request->validate([
+        // Core Policy Details
+        'insurance_policy'    => 'required|string|max:255', // e.g., Policy Number or Type
+        'insured'             => [
+            'required',
+            'string',
+            'max:255',
+            function ($attribute, $value, $fail) use ($request) {
+                // Multi-point duplicate check including your specific fields (minus policy_name)
+                $exists = \App\Models\PlacingSlip::where('insured', $value)
+                    ->where('insurer', $request->insurer)
+                    ->where('policy_start_date', $request->policy_start_date)
+                    ->where('policy_expiry_date', $request->policy_expiry_date)
+                    ->where('insurance_policy', $request->insurance_policy)
+                    ->where('total_sum_insured', $request->total_sum_insured)
+                    ->exists();
+
+                if ($exists) {
+                    $fail("An identical placing slip with this Insured, Insurance Policy, and Sum Insured already exists for this period.");
+                }
+            },
+        ],
+        'insurer'             => 'required|string|max:255',
+        'policy_start_date'   => 'required|date',
+        'policy_expiry_date'  => 'required|date|after:policy_start_date',
+        
+        // Financial Values
+        'total_sum_insured'   => 'required|numeric|min:0',
+        'basic_premium'       => 'required|numeric|min:0',
+        'policy_currency'     => 'required|string|max:10',
+
+        // Rates used in financial calculations
+        'discount_rate'       => 'nullable|numeric|min:0|max:100',
+        'commission_rate'     => 'nullable|numeric|min:0|max:100',
+        'basic_rate'          => 'nullable|numeric|min:0',
+
+        // Optional / Descriptive Slip Fields
+        'nature_of_business'  => 'nullable|string',
+        'principal_address'   => 'nullable|string',
+        'cancellation_clause' => 'nullable|string',
+        'placing_slip_clause' => 'nullable|string',
+        'scope_of_cover'      => 'nullable|string',
+        'extensions'          => 'nullable|string',
+        'excess_deductible'   => 'nullable|string',
+        'property_insured'    => 'nullable|string',
+        'location_of_risk'    => 'nullable|string',
+        'specific_warranties' => 'nullable|string',
+        'specific_conditions' => 'nullable|string',
+
+        // Payment Information
+        'payment_made'        => 'nullable|numeric|min:0',
+        'payment_method'      => 'nullable|string|max:100',
     ]);
 
-    // 2. Financial Logic (Server-Side Calculations)
-    $basicPremium = (float)$request->basic_premium;
-    $discRate = (float)($request->discount_rate ?? 0);
-    $discount = ($discRate / 100) * $basicPremium;
+    // 2. Financial Logic
+    $basicPremium = (float)$validated['basic_premium'];
+    $discRate     = (float)($validated['discount_rate'] ?? 0);
+    $discount     = ($discRate / 100) * $basicPremium;
     
-    $netPremium = $basicPremium - $discount;
-    $levy = $netPremium * 0.05; // 5% Levy
+    $netPremium   = $basicPremium - $discount;
+    $levy         = $netPremium * 0.05; // 5% Levy
     $grossPremium = $netPremium + $levy;
 
-    $commRate = (float)($request->commission_rate ?? 0);
-    $commAmount = ($commRate / 100) * $netPremium;
+    $commRate       = (float)($validated['commission_rate'] ?? 0);
+    $commAmount     = ($commRate / 100) * $netPremium;
     $insurerPremium = $grossPremium - $commAmount;
 
     // 3. Save via Eloquent
     PlacingSlip::create([
-        'user' => Auth::user()->name,
-        'insured' => $request->insured,
-        'nature_of_business' => $request->nature_of_business,
-        'principal_address' => $request->principal_address,
-        'policy_start_date' => $request->policy_start_date,
-        'policy_expiry_date' => $request->policy_expiry_date,
-        'insurer' => $request->insurer,
-        'cancellation_clause' => $request->cancellation_clause,
-        'placing_slip_clause' => $request->placing_slip_clause,
-        'insurance_policy' => $request->insurance_policy,
-        'scope_of_cover' => $request->scope_of_cover,
-        'extensions' => $request->extensions,
-        'excess_deductible' => $request->excess_deductible,
-        'property_insured' => $request->property_insured,
-        'location_of_risk' => $request->location_of_risk,
-        'specific_warranties' => $request->specific_warranties,
-        'specific_conditions' => $request->specific_conditions,
-        'policy_currency' => $request->policy_currency,
-        'total_sum_insured' => $request->total_sum_insured,
-        'basic_rate' => $request->basic_rate,
-        'basic_premium' => $basicPremium,
-        'discount_rate' => $discRate,
-        'discount' => $discount,
-        'premium_levy_rate' => 5.00,
-        'premium_levy' => $levy,
-        'gross_premium' => $grossPremium,
-        'commission_rate' => $commRate,
-        'commission_amount' => $commAmount,
-        'insurer_premium' => $insurerPremium,
-        'payment_made' => $request->payment_made,
-        'payment_method' => $request->payment_method,
+        'user'                => Auth::user()->name ?? auth()->user()->name ?? 'System Process',
+        'insurance_policy'    => $validated['insurance_policy'],
+        'insured'             => $validated['insured'],
+        'nature_of_business'  => $validated['nature_of_business'] ?? null,
+        'principal_address'   => $validated['principal_address'] ?? null,
+        'policy_start_date'   => $validated['policy_start_date'],
+        'policy_expiry_date'  => $validated['policy_expiry_date'],
+        'insurer'             => $validated['insurer'],
+        'cancellation_clause' => $validated['cancellation_clause'] ?? null,
+        'placing_slip_clause' => $validated['placing_slip_clause'] ?? null,
+        'scope_of_cover'      => $validated['scope_of_cover'] ?? null,
+        'extensions'          => $validated['extensions'] ?? null,
+        'excess_deductible'   => $validated['excess_deductible'] ?? null,
+        'property_insured'    => $validated['property_insured'] ?? null,
+        'location_of_risk'    => $validated['location_of_risk'] ?? null,
+        'specific_warranties' => $validated['specific_warranties'] ?? null,
+        'specific_conditions' => $validated['specific_conditions'] ?? null,
+        'policy_currency'     => $validated['policy_currency'],
+        'total_sum_insured'   => $validated['total_sum_insured'],
+        'basic_rate'          => $validated['basic_rate'] ?? null,
+        'basic_premium'       => $basicPremium,
+        'discount_rate'       => $discRate,
+        'discount'            => $discount,
+        'premium_levy_rate'   => 5.00,
+        'premium_levy'        => $levy,
+        'gross_premium'       => $grossPremium,
+        'commission_rate'     => $commRate,
+        'commission_amount'   => $commAmount,
+        'insurer_premium'     => $insurerPremium,
+        'payment_made'        => $validated['payment_made'] ?? null,
+        'payment_method'      => $validated['payment_method'] ?? null,
     ]);
 
-
-        // 3. Build Lookup JS Tables
-        $policyLookup = $policyTypes->pluck('scope_of_cover_policy', 'policy_name')->toArray();
-        
-        // Build Raw Client Data lookups
-        // Merging collections or selecting from unified view
-        $rawClients = Client::select('client_name', 'nature_of_business', 'physical_address')->get();
-        $clientLookup = [];
-        foreach ($rawClients as $row) {
-            $name = trim($row->client_name ?? 'Unknown');
-            if ($name !== 'Unknown') {
-                $clientLookup[$name] = [
-                    'nature'  => $row->nature_of_business ?? '',
-                    'address' => $row->physical_address ?? ''
-                ];
-            }
-        }
-
-        
-
+    // 4. Clean Redirect
     return redirect()->route('insurance_broking.register', ['action' => 'register_slip'])
-                     ->with('msg', 'Your new slip for ' . $validated['insured'] . ' has been successfully registered');
+                     ->with('success', 'The slip (' . $validated['insurance_policy'] . ') for ' . $validated['insured'] . ' has been successfully registered');
 }
 
 
@@ -565,8 +477,9 @@ protected function registerSlip(Request $request)
 
 protected function registerInsurer(Request $request)
 {
+
     $request->validate([
-        'insurer_name'   => 'required|string|unique:insurers,insurer_name',
+        'insurer_name'   => 'required|string|unique:insurer_register,insurer_name',
         'email_address'  => 'required|email',
         'contact_number' => 'required',
         'physical_address' => 'required|string',
@@ -586,7 +499,7 @@ protected function registerInsurer(Request $request)
     ]);
 
     return redirect()->route('insurance_broking.register', ['action' => 'register_insurer'])
-                     ->with('msg', 'Insurer registered successfully!');
+                     ->with('success', 'Insurer registered successfully!');
 }
 
 
@@ -600,7 +513,7 @@ protected function registerPolicy(Request $request)
     // 1. Validation Logic
     // 'unique:policies,policy_name' automatically checks for duplicates in the DB
     $request->validate([
-        'policy_name'            => 'required|string|max:255|unique:policies,policy_name',
+        'policy_name'            => 'required|string|max:255|unique:policy_register,policy_name',
         'scope_of_cover_policy'  => 'required|string',
         'class_of_policy'        => 'required|string',
         'remarks_policy'         => 'nullable|string',
@@ -618,8 +531,8 @@ protected function registerPolicy(Request $request)
     ]);
 
     // 3. Redirect with success message
-    return redirect()->route('broking.register', ['action' => 'register_policy'])
-                     ->with('msg', 'Policy "' . $request->policy_name . '" successfully registered!');
+    return redirect()->route('insurance_broking.register', ['action' => 'register_policy'])
+                     ->with('success', 'Policy "' . $request->policy_name . '" successfully registered!');
 }
 
 
@@ -635,41 +548,25 @@ protected function registerPolicy(Request $request)
 
 public function store(Request $request)
 {
-    // 1. Identify which form was submitted via the button name
-    if ($request->has('register_quote')) {
-        return $this->registerQuote($request);
+    // 1. GATEKEEPER: Check authentication once for ALL sub-methods
+    if (!Auth::check()) {
+        return redirect()->route('login')->with('error', 'Your session expired. Please log in again.');
     }
 
-    if ($request->has('register_slip')) {
-        return $this->registerSlip($request);
+    // Redirect based on the action field
+    switch ($request->input('action')) {
+        case 'register_quote':   return $this->registerQuote($request);
+        case 'register_slip':    return $this->registerSlip($request);
+        case 'register_client':  return $this->registerClient($request);
+        case 'register_policy':  return $this->registerPolicy($request);
+        case 'register_insurer': return $this->registerInsurer($request);
+        case 'register_claim':   return $this->registerClaim($request);
+        case 'register_vehicle':
+        case 'bulk_import_vehicle': 
+            return $this->registerVehicle($request);
+        default:
+            return back()->withErrors('Error: Invalid action requested.');
     }
-
-    if ($request->has('register_client')) {
-        return $this->registerClient($request);
-    }
-
-    if ($request->has('register_policy')) {
-        return $this->registerPolicy($request);
-    }
-
-    if ($request->has('register_insurer')) {
-        return $this->registerInsurer($request);
-    }
-
-    if ($request->has('vehicle_register') || $request->has('bulk_import_vehicle')) {
-    return $this->registerVehicle($request);
-    }
-
-    if ($request->has('register_claim')) {
-        return $this->registerClaim($request);
-    }
-
-    if ($request->has('potential_client')) {
-        return $this->registerPotentialClient($request);
-    }
-
-    // Fallback if no recognizable button was pressed
-    return back()->withErrors('Error: The system could not determine which form you submitted.');
 }
 
 
@@ -899,7 +796,12 @@ public function slip_cancellation_id_list()
     }
 
 
-
+// EDIT CLAIM
+    public function editClaim($id)
+    {
+        $claim = Claim::findOrFail($id);
+        return view('insurance_broking.claims.edit', compact('claim'));
+    }
 
 
 /**
@@ -910,12 +812,64 @@ public function slip_cancellation_id_list()
  * @return \Illuminate\Http\RedirectResponse
  */
 
+// public function updateClaim(Request $request, $id)
+// {
+//     // dd($request->all()); // This will show you exactly what values are being passed
+//     // 1. Find the claim
+//     $claim = \App\Models\Claim::findOrFail($id);
+
+//     // 2. Validate the incoming data
+//     $validatedData = $request->validate([
+//         'claim_intimation_date' => 'nullable|date',
+//         'insurer_name'          => 'nullable|string|max:255',
+//         'client_name'           => 'required|string|max:255',
+//         'type_of_claim'         => 'nullable|string',
+//         'date_of_loss'          => 'required|date',
+//         'date_of_notification'  => 'nullable|date',
+//         'details_of_loss'       => 'nullable|string',
+//         'claim_amount'          => 'required|numeric',
+//         'documents_received'    => 'nullable|string',
+//         'claim_status'          => 'nullable|string',
+//         'remarks'               => 'nullable|string',
+//         'date_settled'          => 'nullable|date',
+//         'amount_settled'        => 'nullable|numeric',
+//         'policy_currency'       => 'nullable|string|max:10',
+//     ]);
+
+//     // Loop through the data and convert empty strings to null
+//     foreach ($validatedData as $key => $value) {
+//         if ($value === '') {
+//             $data[$key] = null;
+//         }
+//     }
+
+//     // 3. Prepare data for update
+//     $updatePayload = array_merge($validatedData, [
+//         'user' => \Illuminate\Support\Facades\Auth::user()->name ?? 'Unknown'
+//     ]);
+
+//     // 4. Perform the update
+//     try {
+//         $claim->update($updatePayload);
+        
+//         // Redirect to the "Show" page instead of "back()" to confirm the update
+//         return redirect()->route('insurance_broking.claims.show', $id)
+//                          ->with('success', 'Claim details saved successfully.');
+
+//     } catch (\Exception $e) {
+//         \Illuminate\Support\Facades\Log::error("Claim Update Failed: " . $e->getMessage());
+        
+//         // Use withErrors to pass the message back to your Blade error block
+//         return back()->withInput()->with('error', 'Update Failed: ' . $e->getMessage());
+//     }
+// }
+
 public function updateClaim(Request $request, $id)
 {
     // 1. Find the claim
     $claim = \App\Models\Claim::findOrFail($id);
 
-    // 2. Validate the incoming data
+    // 2. Validate the incoming data (Handles multiple files array)
     $validatedData = $request->validate([
         'claim_intimation_date' => 'nullable|date',
         'insurer_name'          => 'nullable|string|max:255',
@@ -931,28 +885,129 @@ public function updateClaim(Request $request, $id)
         'date_settled'          => 'nullable|date',
         'amount_settled'        => 'nullable|numeric',
         'policy_currency'       => 'nullable|string|max:10',
+        
+        // Handle array of files validation
+        'claim_documents'       => 'nullable|array',
+        'claim_documents.*'     => 'file|mimes:pdf,jpg,png,docx|max:5120', 
     ]);
 
-    // 3. Prepare data for update
-    $updatePayload = array_merge($validatedData, [
-        'user' => \Illuminate\Support\Facades\Auth::user()->name ?? 'Unknown'
-    ]);
+    // Extract files early to isolate them from string sanitization mapping
+    $files = $request->file('claim_documents');
 
-    // 4. Perform the update
+    // 3. Data Sanitization (Excluding file objects so they aren't corrupted)
+    $updatePayload = collect($validatedData)
+        ->except('claim_documents')
+        ->map(function ($value) {
+            return $value === '' ? null : $value;
+        })->toArray();
+
+    // 4. Handle Multiple Files Upload
+    if ($request->hasFile('claim_documents')) {
+        // Resolve tenant ID dynamically (fallback to 'rib' based on your paths)
+        $tenantId = tenant('id') ?? 'rib';
+        
+        // Ensure client_id has a strict fallback so it never defaults to an empty slash
+        $clientId = $claim->client_id ?? 'unknown_client';
+        
+        // Clean definition without trailing or accidental empty segments
+        $directory = "tenants/{$tenantId}/clients/{$clientId}/claims/{$id}";
+        
+        // Fetch existing documents from the database if you want to merge them, 
+        // or start a fresh array to overwrite them:
+        $uploadedPaths = []; 
+        if (!empty($claim->claim_documents)) {
+            $existing = json_decode($claim->claim_documents, true);
+            if (is_array($existing)) {
+                $uploadedPaths = $existing;
+            }
+        }
+
+        // Loop through each uploaded file
+        foreach ($files as $file) {
+            $filename = $file->hashName();
+            
+            // Explicitly store to the 'public' disk configuration
+            $path = $file->storeAs($directory, $filename, 'public');
+            
+            // Clean up any double slashes that might sneak into the path string
+            $cleanPath = preg_replace('#/+#', '/', $path);
+            
+            $uploadedPaths[] = $cleanPath;
+        }
+
+        // Save cleanly as a JSON string array column 
+        $updatePayload['claim_documents'] = json_encode($uploadedPaths);
+    }
+
+    // 5. Add Audit Trail
+    $updatePayload['user'] = \Illuminate\Support\Facades\Auth::user()->name ?? 'Unknown';
+
+    // 6. Perform the update
     try {
         $claim->update($updatePayload);
         
-        // Redirect to the "Show" page instead of "back()" to confirm the update
         return redirect()->route('insurance_broking.claims.show', $id)
                          ->with('success', 'Claim details saved successfully.');
 
     } catch (\Exception $e) {
         \Illuminate\Support\Facades\Log::error("Claim Update Failed: " . $e->getMessage());
-        
-        // Use withErrors to pass the message back to your Blade error block
         return back()->withInput()->with('error', 'Update Failed: ' . $e->getMessage());
     }
 }
+
+// DELETE FILES
+
+public function deleteFile(Request $request, $id)
+{
+    try {
+        // 1. Manually fetch the claim to ensure Route Model Binding isn't failing
+        $claim = \App\Models\Claim::findOrFail($id); 
+        
+        $filePath = $request->input('file_path');
+        if (!$filePath) {
+            return response()->json(['success' => false, 'message' => 'No file path provided.'], 400);
+        }
+
+        // 2. Safely parse out the documents array depending on how it's stored
+        $documents = $claim->claim_documents;
+        if (is_string($documents)) {
+            $documents = json_decode($documents, true) ?? [];
+        } elseif (!is_array($documents)) {
+            $documents = [];
+        }
+
+        // 3. Verify the file actually belongs to this record
+        if (!in_array($filePath, $documents)) {
+            return response()->json(['success' => false, 'message' => 'File not found on this record.'], 404);
+        }
+
+        // 4. Delete the physical file from the 'public' disk
+        if (Storage::disk('public')->exists($filePath)) {
+            Storage::disk('public')->delete($filePath);
+        }
+
+        // 5. Filter out the deleted file and reset array keys
+        $updatedDocs = array_values(array_filter($documents, fn($doc) => $doc !== $filePath));
+        
+        // 6. Save it back to the database safely
+        // If your model automatically casts to array, pass the array. Otherwise, json_encode it.
+        $claim->claim_documents = empty($updatedDocs) ? null : $updatedDocs;
+        $claim->save();
+
+        return response()->json(['success' => true, 'message' => 'File deleted successfully.']);
+
+    } catch (Exception $e) {
+        // This will log the actual error message to storage/logs/laravel.log so you can inspect it
+        \Log::error('File deletion failed: ' . $e->getMessage());
+        
+        return response()->json([
+            'success' => false, 
+            'message' => 'Server Error: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+
 
 // 1. DISPLAY THE TABLE OF UNINVOICED SLIPS
     // public function generateInvoices()
@@ -999,7 +1054,8 @@ public function viewInvoice_list()
     {
         // 1. Fetch invoices ordered by the newest records
         // If invoices are tied to a specific company/user, you can filter them here:
-        // $invoice_infor = Invoice::where('company_id', Auth::user()->company_id)->get();
+        // $invoice_in
+        // for = Invoice::where('company_id', Auth::user()->company_id)->get();
         $invoice_infor = Invoice::orderBy('created_at', 'desc')->get();
 
         $pageTitle = 'Invoice List';
@@ -1069,7 +1125,7 @@ public function createInvoice(Request $request)
             'acc_no' => ($invoice->policy_currency === 'USD') ? '0003205014188 (USD)' : '0003202005675 (ZMW)'
         ];
 
-        // 3. Construct Structural QR Generator Vector Payload String 
+        // 3. Construct Structural QR Generator Vector Payload String
         $qrRawText = "RIB INV:" . $invoice->invoice_number . " | " . $invoice->client_name . " | Amt:" . $invoice->policy_currency . $invoice->gross_premium;
 
         // =================================================================
@@ -1104,7 +1160,7 @@ public function createInvoice(Request $request)
         }
 
         // 4. MULTI-TENANT DYNAMIC LOGO RESOLUTION
-        $tenantId = tenant('id'); 
+        $tenantId = tenant('id');
         $logoPath = storage_path("app/public/tenants/{$tenantId}/logo.jpg");
         
         if (!file_exists($logoPath)) {
@@ -1115,7 +1171,7 @@ public function createInvoice(Request $request)
         $logoUrl = '';
         if (file_exists($logoPath)) {
             $logoData = base64_encode(file_get_contents($logoPath));
-            $mimeType = @mime_content_type($logoPath) ?: 'image/jpeg'; 
+            $mimeType = @mime_content_type($logoPath) ?: 'image/jpeg';
             $logoUrl  = 'data:' . $mimeType . ';base64,' . $logoData;
         }
 
@@ -1132,7 +1188,7 @@ public function createInvoice(Request $request)
             'invoice'       => $invoice,
             'bankDetails'   => $bankDetails,
             'qrString'      => $qrString, // Now contains your unified, highly flexible dataURI base64 payload string
-            'logoUrl'       => $logoUrl,       
+            'logoUrl'       => $logoUrl,      
             'companyName'   => $companyName,
             'address'       => $address,
             'phone'         => $phone,
@@ -1149,7 +1205,6 @@ public function createInvoice(Request $request)
         $filename = "INV" . str_pad($invoice->invoice_number, 4, "0", STR_PAD_LEFT) . ".pdf";
         return $pdf->download($filename);
     }
-
     
 
 // MONTHLY BUSINESS REPORT
@@ -1772,41 +1827,116 @@ public function editVoucher(Request $request, $id)
     /**
      * Update the placement slip resource.
      */
-    public function updateSlip(Request $request, $id)
-    {
-        $placement = PlacingSlip::findOrFail($id);
+  
+public function updateSlip(Request $request, $id)
+{
+    // 1. Find the parent record
+    $placement = PlacingSlip::findOrFail($id);
 
-        // Define your form validations cleanly here
-        $validated = $request->validate([
-            'insured' => 'required|string|max:255',
-            'principal_address' => 'required|string',
-            'policy_start_date' => 'required',
-            'cancellation_clause' => 'required',
-            'total_sum_insured' => 'nullable|numeric',
-            'basic_rate' => 'nullable|numeric',
-            'basic_premium' => 'nullable|numeric',
-            'discount_rate' => 'nullable|numeric',
-            'discount' => 'nullable|numeric',
-            'premium_levy_rate' => 'nullable|numeric',
-            'premium_levy' => 'nullable|numeric',
-            'commission_rate' => 'nullable|numeric',
-            'commission_amount' => 'nullable|numeric',
-            'insurer_premium' => 'nullable|numeric',
-            'gross_premium' => 'nullable|numeric',
-            'payment_made' => 'nullable|numeric|min:0',
-            // Add other parameters if you want to strictly validate them
+    // 2. Validate all fields matching your native code
+    $validated = $request->validate([
+        'insured'               => 'required|string|max:255',
+        'nature_of_business'    => 'nullable|string',
+        'principal_address'     => 'required|string',
+        'policy_start_date'     => 'required|date',
+        'policy_expiry_date'    => 'nullable|date',
+        'insurer'               => 'nullable|string',
+        'cancellation_clause'   => 'required|string',
+        'placing_slip_clause'   => 'nullable|string',
+        'insurance_policy'      => 'nullable|string',
+        'scope_of_cover'        => 'nullable|string',
+        'extensions'            => 'nullable|string',
+        'excess_deductible'     => 'nullable|string',
+        'property_insured'      => 'nullable|string',
+        'location_of_risk'      => 'nullable|string',
+        'specific_warranties'   => 'nullable|string',
+        'specific_conditions'   => 'nullable|string',
+        'policy_currency'       => 'nullable|string',
+        'total_sum_insured'     => 'nullable|numeric',
+        'basic_rate'            => 'nullable|numeric',
+        'basic_premium'         => 'nullable|numeric',
+        'discount_rate'         => 'nullable|numeric',
+        'discount'              => 'nullable|numeric',
+        'premium_levy_rate'     => 'nullable|numeric',
+        'premium_levy'          => 'nullable|numeric',
+        'gross_premium'         => 'nullable|numeric',
+        'commission_rate'       => 'nullable|numeric',
+        'commission_amount'     => 'nullable|numeric',
+        'payment_made'          => 'nullable|numeric|min:0',
+        'insurer_premium'       => 'nullable|numeric', 
+        'payment_method'        => 'nullable|string',
+        'premium_status'        => 'nullable|string',
+        'status'                => 'nullable|string',
+    ]);
+
+    // ======================================================================
+    // BACKEND SAFETY VALVE: Normalize rates to database decimals (e.g. 15 -> 0.15)
+    // ======================================================================
+    if (($validated['commission_rate'] ?? 0) >= 1)   $validated['commission_rate'] /= 100;
+    if (($validated['discount_rate'] ?? 0) >= 1)     $validated['discount_rate'] /= 100;
+    if (($validated['premium_levy_rate'] ?? 0) >= 1) $validated['premium_levy_rate'] /= 100;
+    if (($validated['basic_rate'] ?? 0) >= 1)        $validated['basic_rate'] /= 100;
+    // ======================================================================
+
+    // 3. Fallback handlers & Type Sanitization (Reading from $validated, NOT raw $request)
+    $validated['insurer_premium']   = (float)($validated['insurer_premium'] ?? 0);
+    $validated['commission_rate']   = (float)($validated['commission_rate'] ?? 0); 
+    $validated['commission_amount'] = (float)($validated['commission_amount'] ?? 0);
+    $validated['premium_levy']      = (float)($validated['premium_levy'] ?? 0);
+    $validated['gross_premium']     = (float)($validated['gross_premium'] ?? 0);
+    $validated['basic_premium']     = (float)($validated['basic_premium'] ?? 0);
+    $validated['basic_rate']        = (float)($validated['basic_rate'] ?? 0);
+    $validated['discount_rate']     = (float)($validated['discount_rate'] ?? 0);
+    $validated['premium_levy_rate'] = (float)($validated['premium_levy_rate'] ?? 0);
+    $validated['total_sum_insured'] = (float)($validated['total_sum_insured'] ?? 0);
+    
+    $validated['payment_method']    = $validated['payment_method'] ?? 'Standard';
+
+    // 4. Track user sessions
+    $currentUserName = Auth::user()->name ?? 'System';
+    $validated['user'] = $currentUserName;
+    $validated['updated_by'] = $currentUserName;
+
+    // 5. Wrap updates in a transaction to match dual-query integrity
+    DB::beginTransaction();
+
+    try {
+        // Update placing slip
+        $placement->update($validated);
+
+        // Update corresponding invoice automatically using cleaned/normalized data
+        Invoice::where('slip_number', $id)->update([
+            'updated_by'          => $currentUserName,
+            'client_name'         => $request->input('insured'),
+            'principal_address'   => $request->input('principal_address'),
+            'policy_start_date'   => $request->input('policy_start_date'),
+            'policy_expiry_date'  => $request->input('policy_expiry_date'),
+            'insurer'             => $request->input('insurer'),
+            'policy_name'         => $request->input('insurance_policy'),
+            'policy_currency'     => $request->input('policy_currency'),
+            'total_sum_insured'   => $validated['total_sum_insured'],
+            'basic_rate'          => $validated['basic_rate'],
+            'basic_premium'       => $validated['basic_premium'],
+            'premium_levy'        => $validated['premium_levy'],
+            'discount_rate'       => $validated['discount_rate'],
+            'premium_levy_rate'   => $validated['premium_levy_rate'],
+            'gross_premium'       => $validated['gross_premium'],
+            'commission_rate'     => $validated['commission_rate'], // Saves the clean decimal (0.15)
+            'commission_amount'   => $validated['commission_amount'],
+            'insurer_premium'     => $validated['insurer_premium'],
         ]);
 
-        try {
-            // Update the record with all incoming form data
-            $placement->update($request->all());
-            
-            return redirect()->route('insurance_broking.placement_slips.edit', $id)->with('success', 'Placing Slip records updated successfully!');
-        } catch (\Exception $e) {
-            return back()->withInput()->with('error', 'Something went wrong: ' . $e->getMessage());
-        }
-    }
+        DB::commit();
 
+        return redirect()->route('insurance_broking.placement_slips.edit', $id)
+            ->with('success', 'Slip details saved successfully. Corresponding invoice updated automatically.');
+
+    } catch (\Exception $e) {
+        DB::rollBack();
+
+        return back()->withInput()->with('error', 'Something went wrong: ' . $e->getMessage());
+    }
+}
 
     /**
      * Generate and download the Placing Slip PDF.
@@ -1838,7 +1968,7 @@ public function editVoucher(Request $request, $id)
         }
 
         // 3. Build the QR Text Source Payload
-        $qrRawText = "RIB REF: " . $placement->id . 
+        $qrRawText = "REF: " . $placement->id . 
                     " | Insured: " . $placement->insured . 
                     " | Insurer: " . $placement->insurer . 
                     " | Premium: " . $placement->policy_currency . " " . $placement->gross_premium;
@@ -1898,7 +2028,7 @@ public function editVoucher(Request $request, $id)
 
         $logoPath = storage_path("app/public/tenants/{$tenantId}/logo.jpg");
         if (!file_exists($logoPath)) {
-            $logoPath = public_path('img/rib_logo.jpg');
+            $logoPath = public_path('img/profstand_logo.jpg');
         }
 
         // Convert branding asset stream into an inline base64 data URL string
@@ -1970,7 +2100,7 @@ public function editVoucher(Request $request, $id)
         }
 
         // 3. Prepare QR Raw Data Payload for the Key Fact Statement
-        $qrRawText = "RIB KFS REF: " . $placement->id . 
+        $qrRawText = "KFS REF: " . $placement->id . 
                     " | Client: " . $placement->insured . 
                     " | Total Due: " . $placement->policy_currency . " " . $placement->gross_premium;
 
@@ -2013,10 +2143,10 @@ public function editVoucher(Request $request, $id)
         $tenantId = tenant('id'); 
         $adminUser = \App\Models\User::where('role', 'admin')->first();
 
-        $companyName = $adminUser->company ?? 'RIB Insurance Brokers';
-        $address     = $adminUser->physical_address ?? '5833 Mwange Close, Lusaka';
-        $phone       = $adminUser->tel_number ?? '+26 (0) 777 780 882';
-        $email       = $adminUser->email ?? 'services@rib.co.zm';
+        $companyName = $adminUser->company ?? '';
+        $address     = $adminUser->physical_address ?? '';
+        $phone       = $adminUser->tel_number ?? '';
+        $email       = $adminUser->email ?? '';
 
         $logoPath = storage_path("app/public/tenants/{$tenantId}/logo.jpg");
         if (!file_exists($logoPath)) {
@@ -2064,23 +2194,83 @@ public function editVoucher(Request $request, $id)
     /**
      * Handle the cancellation logic for a Placing Slip.
      */
-    public function cancelSlip(Request $request)
-    {
-        $validated = $request->validate([
-            'id'            => 'required|exists:placements,id',
-            'remarks'       => 'required|string|max:2000',
-            'manual_refund' => 'required|numeric|min:0'
-        ]);
+    // public function cancelSlip(Request $request)
+    // {
+    //     $validated = $request->validate([
+    //         'id'            => 'required|exists:slip_cancellation,id',
+    //         'remarks'       => 'required|string|max:2000',
+    //         'manual_refund' => 'required|numeric|min:0'
+    //     ]);
 
-        // Using a transaction to ensure database integrity
-        DB::transaction(function () use ($validated) {
-            $placement = PlacingSlip::lockForUpdate()->find($validated['id']);
+    //     // Using a transaction to ensure database integrity
+    //     DB::transaction(function () use ($validated) {
+    //         $placement = PlacingSlip::lockForUpdate()->find($validated['id']);
             
+    //         $placement->update([
+    //             'status'               => 'Cancelled',
+    //             'cancellation_remarks' => $validated['remarks'],
+    //             'refund_amount'        => $validated['manual_refund'],
+    //             'cancelled_at'         => now(),
+    //         ]);
+    //     });
+
+    //     return back()->with([
+    //         'msg'      => "Placing Slip #{$validated['id']} has been successfully cancelled.",
+    //         'msg_type' => 'success'
+    //     ]);
+    // }
+
+   public function cancelSlip(Request $request)
+{
+    $validated = $request->validate([
+        'id'            => 'required|exists:slip_register,id',
+        'remarks'       => 'required|string|max:2000',
+        'manual_refund' => 'required|numeric|min:0',
+        'is_reversal'   => 'nullable',
+        'date_from'     => 'nullable|date',
+        'date_to'       => 'nullable|date',
+    ]);
+
+    try {
+        DB::transaction(function () use ($validated) {
+            // 1. Fetch and Lock the row
+            $placement = PlacingSlip::lockForUpdate()->findOrFail($validated['id']);
+
+            if ($placement->status === 'Cancelled') {
+                throw new \Exception("Slip #{$validated['id']} was already cancelled.");
+            }
+
+            $isReversal = isset($validated['is_reversal']);
+            $remarks = $isReversal ? "[FULL REVERSAL] " . $validated['remarks'] : $validated['remarks'];
+
+            // 2. Create the log entry using your model
+            SlipCancellation::create([
+                'slip_id'                => $placement->id,
+                'insurance_policy'       => $placement->insurance_policy,
+                'insured_name'           => $placement->insured,
+                'basic_premium'          => $placement->basic_premium,
+                'premium_refund'         => $validated['manual_refund'],
+                'policy_currency'        => $placement->policy_currency,
+                'cancelled_by'           => auth()->user()->name ?? 'System',
+                'cancellation_date'      => now(),
+                'cancellation_date_from' => $validated['date_from'] ?? null,
+                'cancellation_date_to'   => $validated['date_to'] ?? null,
+                'remarks'                => $remarks,
+            ]);
+
+            // 3. Update the main placement record
             $placement->update([
-                'status'               => 'Cancelled',
-                'cancellation_remarks' => $validated['remarks'],
+                'status'               => $isReversal ? 'Cancelled' : $placement->status,
+                'cancellation_remarks' => $remarks,
                 'refund_amount'        => $validated['manual_refund'],
                 'cancelled_at'         => now(),
+            ]);
+
+            // 4. Update the related invoice
+            DB::table('invoices')->where('slip_number', $placement->id)->update([
+                'invoice_status' => $isReversal ? 'Cancelled' : 'Active',
+                'remarks'        => $remarks,
+                'cancelled_by'   => auth()->user()->name ?? 'System',
             ]);
         });
 
@@ -2088,7 +2278,16 @@ public function editVoucher(Request $request, $id)
             'msg'      => "Placing Slip #{$validated['id']} has been successfully cancelled.",
             'msg_type' => 'success'
         ]);
+
+    } catch (\Exception $e) {
+        \Log::error("Cancellation failed: " . $e->getMessage());
+
+        return back()->with([
+            'msg'      => $e->getMessage(),
+            'msg_type' => 'danger'
+        ]);
     }
+}
 
     // SHOW/VIEW CLAIM DETAILS
     public function showClaim($id)
@@ -2096,6 +2295,7 @@ public function editVoucher(Request $request, $id)
         $claim = Claim::findOrFail($id); // Or your specific model name
         return view('insurance_broking.claims.show', compact('claim'));
     }
+
 
     // RENEW POLICY
     public function renew(Request $request)
@@ -2163,7 +2363,7 @@ public function editVoucher(Request $request, $id)
 
         // Conditional data loading based on action
         if ($action == 'view_slip_list') {
-            $data['placements'] = PlacingSlip::where('status', 'Active')->get();
+            $data['placements'] = PlacingSlip::whereIn('status', ['Active', 'Renewed', 'Expired'])->get();
         } elseif ($action == 'view_claim_list') {
             $data['claims'] = Claim::all();
         } elseif ($action == 'view_vehicle_list') {

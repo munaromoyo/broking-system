@@ -90,10 +90,10 @@
         <div class="row">
             <!-- Company Info -->
             <div class="col-md-3 mb-4">
-                <h5 class="footer-heading">Revolution Insurance Brokers Ltd</h5>
+                <h5 class="footer-heading">Profstand Technologies Ltd</h5>
                 <ul class="footer-link-list">
                     <li><a href="#">About Our Mission</a></li>
-                    <li><a href="#">The Insurance Blog</a></li>
+                    <li><a href="#">Our Blog</a></li>
                     <li><a href="#">Careers</a></li>
                     <li><a href="#">Contact Support</a></li>
                     <li><a href="#">Support FAQs</a></li>
@@ -102,22 +102,22 @@
 
             <!-- Solutions -->
             <div class="col-md-4 mb-4">
-                <h5 class="footer-heading">Insurance Solutions</h5>
+                <h5 class="footer-heading">Digital Solutions</h5>
                 <div class="row">
                     <div class="col-6">
                         <ul class="footer-link-list">
-                            <li><a href="#">Personal Auto</a></li>
-                            <li><a href="#">Business Auto</a></li>
-                            <li><a href="#">Liability</a></li>
-                            <li><a href="#">Agriculture</a></li>
+                            <li><a href="#">Software Development</a></li>
+                            <li><a href="#">Website Development</a></li>
+                            <li><a href="#">Hosting Services</a></li>
+                            <li><a href="#">Website Maintenance</a></li>
                         </ul>
                     </div>
                     <div class="col-6">
                         <ul class="footer-link-list">
-                            <li><a href="#">Engineering</a></li>
-                            <li><a href="#">Marine & Aviation</a></li>
-                            <li><a href="#">Bonds & Surety</a></li>
-                            <li><a href="#">Takaful (Muslim)</a></li>
+                            <li><a href="#">Electronic Equipment</a></li>
+                            <li><a href="#">Insurance Broking System</a></li>
+                            <li><a href="#">Digital Skills Training</a></li>
+                            <li><a href="#">Website Application Management</a></li>
                         </ul>
                     </div>
                 </div>
@@ -126,7 +126,7 @@
             <!-- Newsletter -->
             <div class="col-md-5 mb-4">
                 <div class="newsletter-box">
-                    <h5 class="footer-heading" style="border:none; padding:0;">Stay Protected</h5>
+                    <h5 class="footer-heading" style="border:none; padding:0;">Your Digital Technology, Our Virtuosity!</h5>
                     <p class="small text-muted">Join 5,000+ others receiving our monthly insurance insights and safety tips.</p>
                     <form class="d-flex gap-2">
                         @csrf

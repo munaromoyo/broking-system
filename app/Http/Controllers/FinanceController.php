@@ -13,6 +13,11 @@ use App\Models\JournalVoucher;
 use App\Models\FixedAsset;
 use App\Models\Liability;
 use App\Http\Controllers\Finance\JournalController;
+use App\Models\Receipt;
+use App\Models\Invoice;
+use App\Models\InsurerRemittance;
+
+
 
 class FinanceController extends Controller
 {
@@ -66,7 +71,7 @@ class FinanceController extends Controller
         $endOfYear = Carbon::create($targetYear, 12, 31)->endOfDay();
 
         // 1. Fetch Data (Assuming you have these models set up)
-        $cashBook = CashBook::all(); 
+        $cashBook = Receipt::all(); 
         $invoices = Invoice::all();
         $vouchers = PaymentVoucher::where('status', 'approved')->get();
 
@@ -126,69 +131,181 @@ class FinanceController extends Controller
         return (strtoupper($currency) === 'USD') ? ($amount * $rate) : $amount;
     }
 
-//LEDGER ACCOUNTS
+// //LEDGER ACCOUNTS
+// public function ledgerAccounts()
+//     {
+//         // 1. Fetch data from models
+//         $invoices = Invoice::all();
+//         $cashBook = Receipt::all();
+//         $remittances = InsurerRemittance::all();
+
+//         // 2. Initialize Report Structure
+//         $ledgers = [
+//             'clients' => ['ZMW' => [], 'USD' => []], 
+//             'insurers' => ['ZMW' => [], 'USD' => []]
+//         ];
+
+//         // 3. Process Invoices (Debits for Clients, Credits for Insurers)
+//         foreach ($invoices as $inv) {
+//             $curr = strtoupper($inv->policy_currency);
+            
+//             // Client Side
+//             $ledgers['clients'][$curr][$inv->client_name][] = [
+//                 'date' => $inv->created_at, 'ref' => $inv->slip_number, 
+//                 'desc' => "Invoice: " . $inv->policy_name, 'dr' => (float)$inv->gross_premium, 'cr' => 0
+//             ];
+            
+//             // Insurer Side
+//             $ledgers['insurers'][$curr][$inv->insurer][] = [
+//                 'date' => $inv->created_at, 'ref' => $inv->slip_number, 
+//                 'desc' => "Premium: " . $inv->policy_name, 'dr' => 0, 'cr' => (float)$inv->insurer_premium
+//             ];
+//         }
+
+//         // 4. Process Cash Book (Credits for Clients - they paid us)
+//         foreach ($cashBook as $cb) {
+//             $curr = strtoupper($cb->policy_currency);
+//             $ledgers['clients'][$curr][$cb->client_name][] = [
+//                 'date' => $cb->receipt_date, 'ref' => $cb->receipt_number, 
+//                 'desc' => "Payment Received", 'dr' => 0, 'cr' => (float)$cb->amount_paid
+//             ];
+//         }
+
+//         // 5. Process Remittances (Debits for Insurers - we paid them)
+//         foreach ($remittances as $rem) {
+//             $curr = strtoupper($rem->currency);
+//             $ledgers['insurers'][$curr][$rem->insurer_name][] = [
+//                 'date' => $rem->created_at, 'ref' => $rem->remittance_no, 
+//                 'desc' => "Remittance to Insurer", 'dr' => (float)$rem->amount_paid, 'cr' => 0
+//             ];
+//         }
+
+//         // 6. Sort transactions by date for each entity
+//         foreach (['clients', 'insurers'] as $type) {
+//             foreach ($ledgers[$type] as $curr => &$entities) {
+//                 foreach ($entities as $name => &$txns) {
+//                     usort($txns, function($a, $b) {
+//                         return strtotime($a['date']) <=> strtotime($b['date']);
+//                     });
+//                 }
+//                 ksort($entities); // Sort names alphabetically
+//             }
+//         }
+
+//         return view('finance.ledger', compact('ledgers'));
+//     }
+
+
 public function ledgerAccounts()
-    {
-        // 1. Fetch data from models
-        $invoices = Invoice::all();
-        $cashBook = CashBook::all();
-        $remittances = Remittance::all();
+{
+    // 1. Fetch data from models
+    $invoices = Invoice::all();
+    $cashBook = Receipt::all();
+    $remittances = InsurerRemittance::all();
 
-        // 2. Initialize Report Structure
-        $ledgers = [
-            'clients' => ['ZMW' => [], 'USD' => []], 
-            'insurers' => ['ZMW' => [], 'USD' => []]
+    // 2. Initialize Report Structure
+    $ledgers = [
+        'clients' => ['ZMW' => [], 'USD' => []], 
+        'insurers' => ['ZMW' => [], 'USD' => []]
+    ];
+
+    // 3. Process Invoices (Debits for Clients, Credits for Insurers unless Cancelled)
+    foreach ($invoices as $inv) {
+        $curr = strtoupper($inv->policy_currency);
+        
+        // Skip or ignore if the currency doesn't match predefined structures
+        if (!isset($ledgers['clients'][$curr])) continue;
+
+        // Check if invoice is cancelled
+        $isCancelled = (strtolower($inv->invoice_status) === 'Cancelled');
+
+        // Client Side
+        $ledgers['clients'][$curr][$inv->client_name][] = [
+            'date' => $inv->created_at, 
+            'ref'  => $inv->slip_number, 
+            'desc' => $isCancelled ? "Invoice Cancelled: " . $inv->policy_name : "Invoice: " . $inv->policy_name, 
+            'dr'   => $isCancelled ? 0 : (float)$inv->gross_premium, 
+            'cr'   => $isCancelled ? (float)$inv->gross_premium : 0 // Reversed to Credit side
         ];
-
-        // 3. Process Invoices (Debits for Clients, Credits for Insurers)
-        foreach ($invoices as $inv) {
-            $curr = strtoupper($inv->policy_currency);
-            
-            // Client Side
-            $ledgers['clients'][$curr][$inv->client_name][] = [
-                'date' => $inv->created_at, 'ref' => $inv->slip_number, 
-                'desc' => "Invoice: " . $inv->policy_name, 'dr' => (float)$inv->gross_premium, 'cr' => 0
-            ];
-            
-            // Insurer Side
-            $ledgers['insurers'][$curr][$inv->insurer][] = [
-                'date' => $inv->created_at, 'ref' => $inv->slip_number, 
-                'desc' => "Premium: " . $inv->policy_name, 'dr' => 0, 'cr' => (float)$inv->insurer_premium
-            ];
-        }
-
-        // 4. Process Cash Book (Credits for Clients - they paid us)
-        foreach ($cashBook as $cb) {
-            $curr = strtoupper($cb->policy_currency);
-            $ledgers['clients'][$curr][$cb->client_name][] = [
-                'date' => $cb->receipt_date, 'ref' => $cb->receipt_number, 
-                'desc' => "Payment Received", 'dr' => 0, 'cr' => (float)$cb->amount_paid
-            ];
-        }
-
-        // 5. Process Remittances (Debits for Insurers - we paid them)
-        foreach ($remittances as $rem) {
-            $curr = strtoupper($rem->currency);
-            $ledgers['insurers'][$curr][$rem->insurer_name][] = [
-                'date' => $rem->created_at, 'ref' => $rem->remittance_no, 
-                'desc' => "Remittance to Insurer", 'dr' => (float)$rem->amount_paid, 'cr' => 0
-            ];
-        }
-
-        // 6. Sort transactions by date for each entity
-        foreach (['clients', 'insurers'] as $type) {
-            foreach ($ledgers[$type] as $curr => &$entities) {
-                foreach ($entities as $name => &$txns) {
-                    usort($txns, function($a, $b) {
-                        return strtotime($a['date']) <=> strtotime($b['date']);
-                    });
-                }
-                ksort($entities); // Sort names alphabetically
-            }
-        }
-
-        return view('finance.ledger', compact('ledgers'));
+        
+        // Insurer Side
+        $ledgers['insurers'][$curr][$inv->insurer][] = [
+            'date' => $inv->created_at, 
+            'ref'  => $inv->slip_number, 
+            'desc' => $isCancelled ? "Premium Cancelled: " . $inv->policy_name : "Premium: " . $inv->policy_name, 
+            'dr'   => $isCancelled ? (float)$inv->insurer_premium : 0, // Reversed to Debit side
+            'cr'   => $isCancelled ? 0 : (float)$inv->insurer_premium
+        ];
     }
+
+    // 4. Process Cash Book (Credits for Clients - reversed to Debit if Cancelled)
+    // foreach ($cashBook as $cb) {
+    //     $curr = strtoupper($cb->policy_currency);
+        
+    //     if (!isset($ledgers['clients'][$curr])) continue;
+
+    //     // Check if receipt is cancelled/reversed
+    //     $isCancelled = (strtolower($cb->Status) === 'cancelled');
+
+    //     $ledgers['clients'][$curr][$cb->client_name][] = [
+    //         'date' => $cb->receipt_date, 
+    //         'ref'  => $cb->receipt_number, 
+    //         'desc' => $isCancelled ? "Payment Received (Reversed/Cancelled)" : "Payment Received", 
+    //         'dr'   => $isCancelled ? (float)$cb->amount_paid : 0, // Reversed back to Debit side
+    //         'cr'   => $isCancelled ? 0 : (float)$cb->amount_paid
+    //     ];
+    // }
+
+    // 4. Process Cash Book (Credits for Clients - reversed to Debit if Cancelled)
+    foreach ($cashBook as $cb) {
+        $curr = strtoupper($cb->policy_currency);
+        
+        if (!isset($ledgers['clients'][$curr])) continue;
+
+        // Check if receipt is cancelled/reversed
+        $isCancelled = (strtolower($cb->status) === 'Cancelled');
+
+        // FIX: Swapped $cb->amount_paid with $cb->gross_amount_received to match your database schema
+        $receiptAmount = (float)$cb->gross_amount_received;
+
+        $ledgers['clients'][$curr][$cb->client_name][] = [
+            'date' => $cb->receipt_date, 
+            'ref'  => $cb->receipt_number, 
+            'desc' => $isCancelled ? "Payment Received (Reversed/Cancelled)" : "Payment Received", 
+            'dr'   => $isCancelled ? $receiptAmount : 0, 
+            'cr'   => $isCancelled ? 0 : $receiptAmount
+        ];
+    }
+
+    // 5. Process Remittances (Debits for Insurers - we paid them)
+    foreach ($remittances as $rem) {
+        $curr = strtoupper($rem->currency);
+        
+        if (!isset($ledgers['insurers'][$curr])) continue;
+
+        $ledgers['insurers'][$curr][$rem->insurer_name][] = [
+            'date' => $rem->created_at, 
+            'ref'  => $rem->remittance_no, 
+            'desc' => "Remittance to Insurer", 
+            'dr'   => (float)$rem->amount_paid, 
+            'cr'   => 0
+        ];
+    }
+
+    // 6. Sort transactions by date for each entity
+    foreach (['clients', 'insurers'] as $type) {
+        foreach ($ledgers[$type] as $curr => &$entities) {
+            foreach ($entities as $name => &$txns) {
+                usort($txns, function($a, $b) {
+                    return strtotime($a['date']) <=> strtotime($b['date']);
+                });
+            }
+            ksort($entities); // Sort names alphabetically
+        }
+    }
+
+    return view('finance.ledger', compact('ledgers'));
+}
 
 
       // POST JOURNAL VOUCHERS

@@ -1,4 +1,4 @@
-@extends('layouts.app') {{-- Assuming you have a base layout --}}
+@extends('layouts.app')
 
 @section('content')
 <div class="card shadow-sm border-0 mx-auto" style="max-width: 800px; border-radius: 12px; overflow: hidden;">
@@ -13,34 +13,36 @@
             <div class="alert alert-success">{{ session('status') }}</div>
         @endif
 
-        {{-- Form action points to the update route --}}
-        <form id="updateForm" method="POST" action="{{ route('clients.update') }}">
-            @csrf
-            @method('PUT') {{-- Browsers don't support PUT, Laravel simulates it --}}
-            
-            {{-- We use ID now instead of name for better reliability --}}
-            <input type="hidden" name="client_id" id="client_id">
+        {{-- Dropdown to choose client - changes url on selection --}}
+        <div class="mb-4 p-3 bg-light border rounded">
+            <label class="form-label fw-bold">Select Client to Edit</label>
+            <select class="form-select form-select-lg" id="client_select">
+               <option value="">-- Choose Client --</option>
+               @foreach($allClients as $c)
+                   <option value="{{ $c->id }}" {{ $c->id == $client->id ? 'selected' : '' }}>
+                       {{ $c->client_name }}
+                   </option>
+               @endforeach
+            </select>
+        </div>
 
-            <div class="mb-4 p-3 bg-light border rounded">
-                <label class="form-label fw-bold">Select Client to Edit</label>
-                <select class="form-select form-select-lg" id="client_select">
-                    <option value="">-- Choose Client --</option>
-                    @foreach ($clients as $client)
-                        <option value="{{ $client->id }}">{{ $client->client_name }}</option>
-                    @endforeach
-                </select>
-            </div>
+        {{-- Form action points to the specific client's update route --}}
+        <form id="updateForm" method="POST" action="{{ route('clients.update', $client->id) }}">
+            @csrf
+            @method('PUT')
+            
+            <input type="hidden" name="client_id" id="client_id" value="{{ $client->id }}">
 
             <div class="row g-3 mb-3">
                 <div class="col-md-8">
                     <label class="form-label">Client Name*</label>
-                    <input type="text" name="client_name" id="client_name" class="form-control" required>
+                    <input type="text" name="client_name" id="client_name" class="form-control" value="{{ old('client_name', $client->client_name) }}" required>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label">Client Type*</label>
                     <select name="client_type" id="client_type" class="form-select">
-                        <option value="Individual">Individual</option>
-                        <option value="Corporate">Corporate</option>
+                        <option value="Individual" {{ old('client_type', $client->client_type) == 'Individual' ? 'selected' : '' }}>Individual</option>
+                        <option value="Corporate" {{ old('client_type', $client->client_type) == 'Corporate' ? 'selected' : '' }}>Corporate</option>
                     </select>
                 </div>
             </div>
@@ -48,27 +50,27 @@
             <div class="row g-3 mb-3">
                 <div class="col-md-6">
                     <label class="form-label">Contact Number*</label>
-                    <input type="text" name="contact_number" id="contact_number" class="form-control">
+                    <input type="text" name="contact_number" id="contact_number" class="form-control" value="{{ old('contact_number', $client->contact_number) }}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Email Address*</label>
-                    <input type="email" name="email_address" id="email_address" class="form-control">
+                    <input type="email" name="email_address" id="email_address" class="form-control" value="{{ old('email_address', $client->email_address) }}">
                 </div>
             </div>
 
             <div class="mb-3">
                 <label class="form-label">Nature of Business*</label>
-                <textarea name="nature_of_business" id="nature_of_business" class="form-control" rows="2"></textarea>
+                <textarea name="nature_of_business" id="nature_of_business" class="form-control" rows="2">{{ old('nature_of_business', $client->nature_of_business) }}</textarea>
             </div>
 
             <div class="row g-3 mb-4">
                 <div class="col-md-6">
                     <label class="form-label">Physical Address*</label>
-                    <input type="text" name="physical_address" id="physical_address" class="form-control">
+                    <input type="text" name="physical_address" id="physical_address" class="form-control" value="{{ old('physical_address', $client->physical_address) }}">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Postal Address*</label>
-                    <input type="text" name="postal_address" id="postal_address" class="form-control">
+                    <input type="text" name="postal_address" id="postal_address" class="form-control" value="{{ old('postal_address', $client->postal_address) }}">
                 </div>
             </div>
 
@@ -82,31 +84,12 @@
 </div>
 
 <script>
-// Pass Laravel collection to JS safely
-const clients = @json($clients);
-
 document.getElementById('client_select').addEventListener('change', function() {
     const selectedId = this.value;
-    // Find client by ID (more accurate than name)
-    const client = clients.find(c => c.id == selectedId);
-
-    if (client) {
-        setValue('client_id', client.id);
-        setValue('client_name', client.client_name);
-        setValue('client_type', client.client_type);
-        setValue('contact_number', client.contact_number);
-        setValue('email_address', client.email_address);
-        setValue('nature_of_business', client.nature_of_business);
-        setValue('physical_address', client.physical_address);
-        setValue('postal_address', client.postal_address);
-    } else {
-        document.getElementById('updateForm').reset();
+    if (selectedId) {
+        // Dynamically changes URL to point to the freshly selected client's edit route
+        window.location.href = `/clients/${selectedId}/edit`;
     }
 });
-
-function setValue(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.value = value || '';
-}
 </script>
 @endsection
